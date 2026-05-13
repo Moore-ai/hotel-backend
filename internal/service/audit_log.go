@@ -15,14 +15,20 @@ func NewAuditLogService(repo *repository.AuditLogRepo) *AuditLogService {
 	return &AuditLogService{repo: repo}
 }
 
-func (s *AuditLogService) Log(userID uint, action, entityType string, entityID uint, oldValue, newValue interface{}, description string) error {
+func (s *AuditLogService) Log(userID uint, action, entityType string, entityID uint, oldValue, newValue any, description string) error {
 	var oldJSON, newJSON string
 	if oldValue != nil {
-		b, _ := json.Marshal(oldValue)
+		b, err := json.Marshal(oldValue)
+		if err != nil {
+			return err
+		}
 		oldJSON = string(b)
 	}
 	if newValue != nil {
-		b, _ := json.Marshal(newValue)
+		b, err := json.Marshal(newValue)
+		if err != nil {
+			return err
+		}
 		newJSON = string(b)
 	}
 	log := &model.AuditLog{

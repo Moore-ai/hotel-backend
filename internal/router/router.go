@@ -6,29 +6,38 @@ import (
 	"hotel-backend/internal/middleware"
 )
 
-func Setup(
-	authH *handler.AuthHandler,
-	userH *handler.UserHandler,
-	roomH *handler.RoomHandler,
-	orderH *handler.OrderHandler,
-	checkinH *handler.CheckinHandler,
-	notifH *handler.NotificationHandler,
-	auditH *handler.AuditLogHandler,
-) *gin.Engine {
+var staffOnly = middleware.RequireRoles("employee", "admin")
+
+func Setup(handlers *handler.Handlers) *gin.Engine {
 	r := gin.Default()
 	r.Use(middleware.Logger())
 
 	api := r.Group("/api/v1")
 
+	registerAuthRoutes(api, handlers.Auth)
+
+	api.Use(middleware.Auth())
+
+	registerUserRoutes(api, handlers.User)
+	registerRoomRoutes(api, handlers.Room)
+	registerOrderRoutes(api, handlers.Order)
+	registerCheckinRoutes(api, handlers.Checkin)
+	registerNotificationRoutes(api, handlers.Notif)
+	registerAuditLogRoutes(api, handlers.Audit)
+
+	return r
+}
+
+func registerAuthRoutes(api *gin.RouterGroup, authH *handler.AuthHandler) {
 	auth := api.Group("/auth")
 	{
 		auth.POST("/login", authH.Login)
 		auth.POST("/logout", middleware.Auth(), authH.Logout)
 	}
+}
 
-	api.Use(middleware.Auth())
-
-	users := api.Group("/users", middleware.RequireRoles("employee", "admin"))
+func registerUserRoutes(api *gin.RouterGroup, userH *handler.UserHandler) {
+	users := api.Group("/users", staffOnly)
 	{
 		users.GET("", userH.List)
 		users.GET("/:id", userH.Get)
@@ -36,26 +45,32 @@ func Setup(
 		users.PUT("/:id", userH.Update)
 		users.DELETE("/:id", userH.Delete)
 	}
+}
 
+func registerRoomRoutes(api *gin.RouterGroup, roomH *handler.RoomHandler) {
 	rooms := api.Group("/rooms")
 	{
 		rooms.GET("", roomH.List)
 		rooms.GET("/:id", roomH.Get)
-		rooms.POST("", middleware.RequireRoles("employee", "admin"), roomH.Create)
-		rooms.PUT("/:id", middleware.RequireRoles("employee", "admin"), roomH.Update)
-		rooms.DELETE("/:id", middleware.RequireRoles("employee", "admin"), roomH.Delete)
+		rooms.POST("", staffOnly, roomH.Create)
+		rooms.PUT("/:id", staffOnly, roomH.Update)
+		rooms.DELETE("/:id", staffOnly, roomH.Delete)
 	}
+}
 
+func registerOrderRoutes(api *gin.RouterGroup, orderH *handler.OrderHandler) {
 	orders := api.Group("/orders")
 	{
 		orders.GET("", orderH.List)
 		orders.GET("/:id", orderH.Get)
 		orders.POST("", orderH.Create)
-		orders.PUT("/:id", middleware.RequireRoles("employee", "admin"), orderH.Update)
-		orders.DELETE("/:id", middleware.RequireRoles("employee", "admin"), orderH.Delete)
+		orders.PUT("/:id", staffOnly, orderH.Update)
+		orders.DELETE("/:id", staffOnly, orderH.Delete)
 	}
+}
 
-	checkins := api.Group("/checkins", middleware.RequireRoles("employee", "admin"))
+func registerCheckinRoutes(api *gin.RouterGroup, checkinH *handler.CheckinHandler) {
+	checkins := api.Group("/checkins", staffOnly)
 	{
 		checkins.GET("", checkinH.List)
 		checkins.GET("/:id", checkinH.Get)
@@ -63,18 +78,20 @@ func Setup(
 		checkins.PUT("/:id/checkout", checkinH.Checkout)
 		checkins.DELETE("/:id", checkinH.Delete)
 	}
+}
 
+func registerNotificationRoutes(api *gin.RouterGroup, notifH *handler.NotificationHandler) {
 	notifs := api.Group("/notifications")
 	{
 		notifs.GET("", notifH.List)
 		notifs.GET("/unread", notifH.UnreadCount)
 		notifs.PUT("/:id/read", notifH.MarkRead)
 	}
+}
 
-	audit := api.Group("/audit-logs", middleware.RequireRoles("employee", "admin"))
+func registerAuditLogRoutes(api *gin.RouterGroup, auditH *handler.AuditLogHandler) {
+	audit := api.Group("/audit-logs", staffOnly)
 	{
 		audit.GET("", auditH.List)
 	}
-
-	return r
 }
