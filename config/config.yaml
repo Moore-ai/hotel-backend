@@ -1,0 +1,25 @@
+server:
+  port: "8080"
+
+database:
+  host: "localhost"
+  port: "5432"
+  user: "postgres"
+  password: "postgres"
+  dbname: "hotel"
+  sslmode: "disable"
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+jwt:
+  secret: "change-me-in-production"
+  access_token_expiry: 7200   # 2 hours in seconds
+  refresh_token_expiry: 604800 # 7 days in seconds
+
+checkout:
+  first_threshold: "12:00"
+  second_threshold: "18:00"
+  scheduler_interval: 300 # 5 minutes in seconds
