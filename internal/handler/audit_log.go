@@ -1,0 +1,41 @@
+package handler
+
+import (
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+	"hotel-backend/internal/dto"
+	"hotel-backend/internal/repository"
+	"hotel-backend/internal/service"
+	"hotel-backend/pkg/errcode"
+)
+
+type AuditLogHandler struct {
+	auditLogService *service.AuditLogService
+}
+
+func NewAuditLogHandler(auditLogService *service.AuditLogService) *AuditLogHandler {
+	return &AuditLogHandler{auditLogService: auditLogService}
+}
+
+func (h *AuditLogHandler) List(c *gin.Context) {
+	entityID, _ := strconv.ParseUint(c.Query("entity_id"), 10, 64)
+	userID, _ := strconv.ParseUint(c.Query("user_id"), 10, 64)
+	p := dto.ParsePagination(c.Query("page"), c.Query("page_size"))
+
+	f := repository.AuditLogFilter{
+		EntityType: c.Query("entity_type"),
+		EntityID:   uint(entityID),
+		UserID:     uint(userID),
+		StartDate:  c.Query("start"),
+		EndDate:    c.Query("end"),
+		Page:       p.Page,
+		PageSize:   p.PageSize,
+	}
+	logs, total, err := h.auditLogService.FindAll(f)
+	if err != nil {
+		dto.Error(c, errcode.ErrInternal)
+		return
+	}
+	dto.Success(c, dto.PageData{List: logs, Total: total, Page: p.Page, PageSize: p.PageSize})
+}
