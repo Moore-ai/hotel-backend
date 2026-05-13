@@ -1,3 +1,5 @@
 *.md
 hotel-backend.exe
 .vs/
+
+!README.md
