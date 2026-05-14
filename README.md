@@ -76,7 +76,14 @@ redis:
 
 jwt:
   secret: "change-me-in-production"
+
+admin:
+  username: "admin"
+  password: "admin123"
+  name: "超级管理员"
 ```
+
+以上配置均可通过同名环境变量覆盖，例如 `ADMIN_PASSWORD=MySecret123`。
 
 ### 3. 运行
 
@@ -84,10 +91,10 @@ jwt:
 go run main.go
 ```
 
-服务启动后会自动执行数据库迁移，并写入默认管理员账号：
+服务启动后会自动执行数据库迁移，并写入默认管理员账号（可在 `config.yaml` 或环境变量中修改）：
 
-- **用户名：** `admin`
-- **密码：** `admin123`
+- **用户名：** `admin`（`ADMIN_USERNAME`）
+- **密码：** `admin123`（`ADMIN_PASSWORD`）
 
 ## 接口概览
 
