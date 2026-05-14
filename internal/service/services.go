@@ -15,7 +15,7 @@ type Services struct {
 	Audit   *AuditLogService
 }
 
-func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig) *Services {
+func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *Hub) *Services {
 	audit := NewAuditLogService(repos.Audit)
 	return &Services{
 		Auth:    NewAuthService(repos.User, jwtCfg),
@@ -23,7 +23,7 @@ func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig) *Servi
 		Room:    NewRoomService(repos.Room, audit),
 		Order:   NewOrderService(repos.Order, audit),
 		Checkin: NewCheckinService(repos.Checkin, repos.Room, audit),
-		Notif:   NewNotificationService(repos.Notif),
+		Notif:   NewNotificationService(repos.Notif, hub),
 		Audit:   audit,
 	}
 }

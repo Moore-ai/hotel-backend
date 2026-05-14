@@ -24,6 +24,7 @@ func Setup(handlers *handler.Handlers) *gin.Engine {
 	registerCheckinRoutes(api, handlers.Checkin)
 	registerNotificationRoutes(api, handlers.Notif)
 	registerAuditLogRoutes(api, handlers.Audit)
+	registerWSRoutes(api, handlers.WS)
 
 	return r
 }
@@ -94,4 +95,8 @@ func registerAuditLogRoutes(api *gin.RouterGroup, auditH *handler.AuditLogHandle
 	{
 		audit.GET("", auditH.List)
 	}
+}
+
+func registerWSRoutes(api *gin.RouterGroup, wsH *handler.WSHandler) {
+	api.GET("/ws", wsH.Connect)
 }

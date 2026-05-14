@@ -1,6 +1,9 @@
 package handler
 
-import "hotel-backend/internal/service"
+import (
+	"hotel-backend/config"
+	"hotel-backend/internal/service"
+)
 
 type Handlers struct {
 	Auth    *AuthHandler
@@ -10,9 +13,10 @@ type Handlers struct {
 	Checkin *CheckinHandler
 	Notif   *NotificationHandler
 	Audit   *AuditLogHandler
+	WS      *WSHandler
 }
 
-func NewHandlers(services *service.Services) *Handlers {
+func NewHandlers(services *service.Services, hub *service.Hub, jwtCfg config.JWTConfig) *Handlers {
 	return &Handlers{
 		Auth:    NewAuthHandler(services.Auth),
 		User:    NewUserHandler(services.User),
@@ -21,5 +25,6 @@ func NewHandlers(services *service.Services) *Handlers {
 		Checkin: NewCheckinHandler(services.Checkin),
 		Notif:   NewNotificationHandler(services.Notif),
 		Audit:   NewAuditLogHandler(services.Audit),
+		WS:      NewWSHandler(hub, jwtCfg),
 	}
 }

@@ -21,9 +21,12 @@ func main() {
 
 	middleware.JWTSecret = cfg.JWT.Secret
 
+	hub := service.NewHub()
+	go hub.Run()
+
 	repos := repository.NewRepositories(database.DB)
-	services := service.NewServices(repos, cfg.JWT)
-	handlers := handler.NewHandlers(services)
+	services := service.NewServices(repos, cfg.JWT, hub)
+	handlers := handler.NewHandlers(services, hub, cfg.JWT)
 
 	go service.NewScheduler(repos.Checkin, repos.Schedule, services.Notif, services.Checkin, repos.User, cfg.Checkout).Run()
 
