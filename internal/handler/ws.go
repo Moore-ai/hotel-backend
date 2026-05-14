@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 	"hotel-backend/config"
 	"hotel-backend/internal/service"
+	"hotel-backend/pkg/errcode"
 	"hotel-backend/pkg/jwt"
 )
 
@@ -27,13 +28,13 @@ func NewWSHandler(hub *service.Hub, jwtCfg config.JWTConfig) *WSHandler {
 func (h *WSHandler) Connect(c *gin.Context) {
 	token := c.Query("token")
 	if token == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "缺少 token"})
+		errcode.Write(c, errcode.ErrUnauthorized)
 		return
 	}
 
 	claims, err := jwt.ParseToken(token, h.jwtCfg.Secret)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "无效 token"})
+		errcode.Write(c, errcode.ErrUnauthorized)
 		return
 	}
 

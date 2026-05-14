@@ -2,10 +2,18 @@ package service
 
 import (
 	"encoding/json"
+	"log"
 
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
 )
+
+type wsMessage struct {
+	Type string       `json:"type"`
+	Data *model.Notification `json:"data"`
+}
+
+const wsTypeNotification = "notification"
 
 type NotificationService struct {
 	repo *repository.NotificationRepo
@@ -27,11 +35,12 @@ func (s *NotificationService) Create(userID uint, nType, title, content string) 
 		return nil, err
 	}
 
-	msg, _ := json.Marshal(map[string]any{
-		"type": "notification",
-		"data": n,
-	})
-	s.hub.SendToUser(userID, msg)
+	msg, err := json.Marshal(wsMessage{Type: wsTypeNotification, Data: n})
+	if err != nil {
+		log.Printf("Failed to marshal notification for WebSocket: %v", err)
+	} else {
+		s.hub.SendToUser(userID, msg)
+	}
 
 	return n, nil
 }

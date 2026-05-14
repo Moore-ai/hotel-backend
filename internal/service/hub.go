@@ -1,6 +1,7 @@
 package service
 
 import (
+	"log"
 	"sync"
 	"time"
 
@@ -13,7 +14,6 @@ const (
 	maxMessageSize = 512
 )
 
-// Client 代表一个 WebSocket 连接
 type Client struct {
 	Hub    *Hub
 	Conn   *websocket.Conn
@@ -21,7 +21,6 @@ type Client struct {
 	Send   chan []byte
 }
 
-// Hub 管理所有 WebSocket 连接，按 userID 分组
 type Hub struct {
 	mu         sync.RWMutex
 	clients    map[uint][]*Client
@@ -48,8 +47,8 @@ func (h *Hub) Run() {
 		case client := <-h.Unregister:
 			h.mu.Lock()
 			h.removeClient(client)
-			h.mu.Unlock()
 			close(client.Send)
+			h.mu.Unlock()
 		}
 	}
 }
@@ -62,10 +61,7 @@ func (h *Hub) SendToUser(userID uint, msg []byte) {
 		select {
 		case client.Send <- msg:
 		default:
-			h.mu.Lock()
-			close(client.Send)
-			h.removeClient(client)
-			h.mu.Unlock()
+			log.Printf("WebSocket send buffer full for user %d, skipping", userID)
 		}
 	}
 }
@@ -83,7 +79,6 @@ func (h *Hub) removeClient(client *Client) {
 	}
 }
 
-// ReadPump 从 WebSocket 连接读取（主要用于检测断开）
 func (c *Client) ReadPump() {
 	defer func() {
 		c.Conn.Close()
@@ -103,7 +98,6 @@ func (c *Client) ReadPump() {
 	}
 }
 
-// WritePump 将消息写入 WebSocket 连接，含 ping/pong 保活
 func (c *Client) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
