@@ -38,7 +38,7 @@ func NewScheduler(
 }
 
 func (s *Scheduler) Run() {
-	interval := s.cfg.SchedulerInterval * time.Second
+	interval := time.Duration(s.cfg.SchedulerInterval) * time.Second
 	log.Printf("Scheduler started, checking every %v", interval)
 
 	ticker := time.NewTicker(interval)
@@ -58,9 +58,10 @@ func (s *Scheduler) tick() {
 
 	now := time.Now()
 	today := now.Format("2006-01-02")
+	loc := now.Location()
 
-	firstThreshold, _ := time.Parse("2006-01-02 15:04", today+" "+s.cfg.FirstThreshold)
-	secondThreshold, _ := time.Parse("2006-01-02 15:04", today+" "+s.cfg.SecondThreshold)
+	firstThreshold, _ := time.ParseInLocation("2006-01-02 15:04", today+" "+s.cfg.FirstThreshold, loc)
+	secondThreshold, _ := time.ParseInLocation("2006-01-02 15:04", today+" "+s.cfg.SecondThreshold, loc)
 
 	for _, c := range checkins {
 		if c.ExpectedCheckoutTime.After(now) {

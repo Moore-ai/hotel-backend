@@ -15,6 +15,7 @@ func Setup(handlers *handler.Handlers) *gin.Engine {
 	api := r.Group("/api/v1")
 
 	registerAuthRoutes(api, handlers.Auth)
+	registerWSRoutes(api, handlers.WS)
 
 	api.Use(middleware.Auth())
 
@@ -24,7 +25,6 @@ func Setup(handlers *handler.Handlers) *gin.Engine {
 	registerCheckinRoutes(api, handlers.Checkin)
 	registerNotificationRoutes(api, handlers.Notif)
 	registerAuditLogRoutes(api, handlers.Audit)
-	registerWSRoutes(api, handlers.WS)
 
 	return r
 }
