@@ -2,11 +2,13 @@ package database
 
 import (
 	"log"
+
+	"hotel-backend/config"
 	"hotel-backend/internal/model"
 	"hotel-backend/pkg/hash"
 )
 
-func SeedAdmin() error {
+func SeedAdmin(cfg config.AdminConfig) error {
 	var count int64
 	DB.Model(&model.User{}).Where("role = ?", "admin").Count(&count)
 	if count > 0 {
@@ -14,19 +16,19 @@ func SeedAdmin() error {
 		return nil
 	}
 
-	pw, err := hash.HashPassword("admin123")
+	pw, err := hash.HashPassword(cfg.Password)
 	if err != nil {
 		return err
 	}
 	admin := &model.User{
-		Username:     "admin",
+		Username:     cfg.Username,
 		PasswordHash: pw,
 		Role:         "admin",
-		Name:         "超级管理员",
+		Name:         cfg.Name,
 	}
 	if err := DB.Create(admin).Error; err != nil {
 		return err
 	}
-	log.Println("Admin user seeded (admin/admin123)")
+	log.Printf("Admin user seeded (%s/********)", cfg.Username)
 	return nil
 }

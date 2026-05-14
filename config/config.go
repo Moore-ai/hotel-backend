@@ -13,6 +13,7 @@ type Config struct {
 	Redis    RedisConfig
 	JWT      JWTConfig
 	Checkout CheckoutConfig
+	Admin    AdminConfig
 }
 
 type ServerConfig struct {
@@ -49,6 +50,12 @@ type CheckoutConfig struct {
 	FirstThreshold    string
 	SecondThreshold   string
 	SchedulerInterval time.Duration
+}
+
+type AdminConfig struct {
+	Username string
+	Password string
+	Name     string
 }
 
 func Load(path string) (*Config, error) {

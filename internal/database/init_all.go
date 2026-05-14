@@ -10,7 +10,7 @@ func InitAll(cfg *config.Config) error {
 	if err := AutoMigrate(); err != nil {
 		return err
 	}
-	if err := SeedAdmin(); err != nil {
+	if err := SeedAdmin(cfg.Admin); err != nil {
 		return err
 	}
 	return nil

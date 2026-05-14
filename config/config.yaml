@@ -23,3 +23,8 @@ checkout:
   first_threshold: "12:00"
   second_threshold: "18:00"
   scheduler_interval: 300 # 5 minutes in seconds
+
+admin:
+  username: "admin"
+  password: "admin123"
+  name: "超级管理员"
