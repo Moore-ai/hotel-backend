@@ -19,6 +19,7 @@ type Client struct {
 	Conn   *websocket.Conn
 	UserID uint
 	Send   chan []byte
+	Done   chan struct{}
 }
 
 type Hub struct {
@@ -47,7 +48,7 @@ func (h *Hub) Run() {
 		case client := <-h.Unregister:
 			h.mu.Lock()
 			h.removeClient(client)
-			close(client.Send)
+			close(client.Done)
 			h.mu.Unlock()
 		}
 	}
@@ -106,12 +107,8 @@ func (c *Client) WritePump() {
 	}()
 	for {
 		select {
-		case message, ok := <-c.Send:
+		case message := <-c.Send:
 			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if !ok {
-				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
 			if err := c.Conn.WriteMessage(websocket.TextMessage, message); err != nil {
 				return
 			}
@@ -120,6 +117,8 @@ func (c *Client) WritePump() {
 			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
+		case <-c.Done:
+			return
 		}
 	}
 }

@@ -49,6 +49,7 @@ func (h *WSHandler) Connect(c *gin.Context) {
 		Conn:   conn,
 		UserID: claims.UserID,
 		Send:   make(chan []byte, 64),
+		Done:   make(chan struct{}),
 	}
 	h.hub.Register <- client
 
