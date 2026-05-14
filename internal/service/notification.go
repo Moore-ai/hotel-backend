@@ -1,16 +1,19 @@
 package service
 
 import (
+	"encoding/json"
+
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
 )
 
 type NotificationService struct {
 	repo *repository.NotificationRepo
+	hub  *Hub
 }
 
-func NewNotificationService(repo *repository.NotificationRepo) *NotificationService {
-	return &NotificationService{repo: repo}
+func NewNotificationService(repo *repository.NotificationRepo, hub *Hub) *NotificationService {
+	return &NotificationService{repo: repo, hub: hub}
 }
 
 func (s *NotificationService) Create(userID uint, nType, title, content string) (*model.Notification, error) {
@@ -20,7 +23,17 @@ func (s *NotificationService) Create(userID uint, nType, title, content string) 
 		Title:   title,
 		Content: content,
 	}
-	return n, s.repo.Create(n)
+	if err := s.repo.Create(n); err != nil {
+		return nil, err
+	}
+
+	msg, _ := json.Marshal(map[string]any{
+		"type": "notification",
+		"data": n,
+	})
+	s.hub.SendToUser(userID, msg)
+
+	return n, nil
 }
 
 func (s *NotificationService) FindByUserID(userID uint, page, pageSize int) ([]model.Notification, int64, error) {
