@@ -60,8 +60,21 @@ func (s *Scheduler) tick() {
 	today := now.Format("2006-01-02")
 	loc := now.Location()
 
-	firstThreshold, _ := time.ParseInLocation("2006-01-02 15:04", today+" "+s.cfg.FirstThreshold, loc)
-	secondThreshold, _ := time.ParseInLocation("2006-01-02 15:04", today+" "+s.cfg.SecondThreshold, loc)
+	firstThreshold, err := time.ParseInLocation("2006-01-02 15:04", today+" "+s.cfg.FirstThreshold, loc)
+	if err != nil {
+		log.Printf("Scheduler: invalid first_threshold %q: %v", s.cfg.FirstThreshold, err)
+		return
+	}
+	secondThreshold, err := time.ParseInLocation("2006-01-02 15:04", today+" "+s.cfg.SecondThreshold, loc)
+	if err != nil {
+		log.Printf("Scheduler: invalid second_threshold %q: %v", s.cfg.SecondThreshold, err)
+		return
+	}
+
+	// Pre-fetch once per tick instead of per-checkin in notifyStaffAndAdmin
+	staff, _ := s.userRepo.FindByRole("employee")
+	admin, _ := s.userRepo.FindByRole("admin")
+	notifyUsers := append(staff, admin...)
 
 	for _, c := range checkins {
 		if c.ExpectedCheckoutTime.After(now) {
@@ -79,7 +92,7 @@ func (s *Scheduler) tick() {
 		}
 
 		if now.After(secondThreshold) && !schedule.SecondNotified {
-			s.notifyStaffAndAdmin(c)
+			s.notifyStaffAndAdmin(c, notifyUsers)
 			schedule.SecondNotified = true
 			_ = s.scheduleRepo.Update(schedule)
 			continue
@@ -100,17 +113,11 @@ func (s *Scheduler) notifyGuest(c model.Checkin) {
 	log.Printf("Scheduler: sent guest notification to user %d for checkin %d", c.UserID, c.ID)
 }
 
-func (s *Scheduler) notifyStaffAndAdmin(c model.Checkin) {
+func (s *Scheduler) notifyStaffAndAdmin(c model.Checkin, users []model.User) {
 	title := "超时签离告警"
 	content := fmt.Sprintf("住户 %s 在 %s 号房超时未签离，应签离时间 %s，请跟进。", c.User.Name, c.Room.RoomNumber, c.ExpectedCheckoutTime.Format("2006-01-02 15:04"))
 
-	employees, _ := s.userRepo.FindByRole("employee")
-	admins, _ := s.userRepo.FindByRole("admin")
-
-	for _, u := range employees {
-		s.notifService.Create(u.ID, "overdue_alert", title, content)
-	}
-	for _, u := range admins {
+	for _, u := range users {
 		s.notifService.Create(u.ID, "overdue_alert", title, content)
 	}
 	log.Printf("Scheduler: sent staff/admin alerts for checkin %d", c.ID)
