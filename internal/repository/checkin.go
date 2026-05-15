@@ -40,7 +40,7 @@ func (r *CheckinRepo) FindAll(page, pageSize int) ([]model.Checkin, int64, error
 func (r *CheckinRepo) FindActive() ([]model.Checkin, error) {
 	var checkins []model.Checkin
 	err := r.db.Preload("User").Preload("Room").
-		Where("status = ?", "active").Find(&checkins).Error
+		Where("status = ?", model.CheckinStatusActive).Find(&checkins).Error
 	return checkins, err
 }
 

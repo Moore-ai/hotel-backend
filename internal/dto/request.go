@@ -63,6 +63,7 @@ type UpdateUserRequest struct {
 type CreateRoomRequest struct {
 	RoomNumber    string  `json:"room_number" binding:"required"`
 	Type          string  `json:"type"`
+	Capacity      int     `json:"capacity"`
 	Floor         int     `json:"floor"`
 	PricePerNight float64 `json:"price_per_night"`
 	Status        string  `json:"status"`
@@ -72,6 +73,7 @@ type CreateRoomRequest struct {
 type UpdateRoomRequest struct {
 	RoomNumber    string  `json:"room_number"`
 	Type          string  `json:"type"`
+	Capacity      int     `json:"capacity"`
 	Floor         int     `json:"floor"`
 	PricePerNight float64 `json:"price_per_night"`
 	Status        string  `json:"status"`
@@ -79,10 +81,12 @@ type UpdateRoomRequest struct {
 }
 
 type CreateOrderRequest struct {
-	RoomID       uint    `json:"room_id" binding:"required"`
-	CheckInDate  string  `json:"check_in_date" binding:"required"`
-	CheckOutDate string  `json:"check_out_date" binding:"required"`
-	TotalPrice   float64 `json:"total_price"`
+	RoomID             uint    `json:"room_id"`
+	GuestCount         int     `json:"guest_count"`
+	RoomTypePreference string  `json:"room_type_preference"`
+	CheckInDate        string  `json:"check_in_date" binding:"required"`
+	CheckOutDate       string  `json:"check_out_date" binding:"required"`
+	TotalPrice         float64 `json:"total_price"`
 }
 
 type UpdateOrderRequest struct {
@@ -95,6 +99,6 @@ type UpdateOrderRequest struct {
 type CreateCheckinRequest struct {
 	OrderID              *uint  `json:"order_id"`
 	UserID               uint   `json:"user_id" binding:"required"`
-	RoomID               uint   `json:"room_id" binding:"required"`
+	RoomID               uint   `json:"room_id"`
 	ExpectedCheckoutTime string `json:"expected_checkout_time" binding:"required"`
 }

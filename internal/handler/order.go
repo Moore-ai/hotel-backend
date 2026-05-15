@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -61,8 +62,18 @@ func (h *OrderHandler) Create(c *gin.Context) {
 		return
 	}
 	userID := c.GetUint("user_id")
-	order, err := h.orderService.Create(userID, req.RoomID, req.CheckInDate, req.CheckOutDate, req.TotalPrice)
+
+	var roomID *uint
+	if req.RoomID != 0 {
+		roomID = &req.RoomID
+	}
+
+	order, err := h.orderService.Create(userID, roomID, req.CheckInDate, req.CheckOutDate, req.TotalPrice, req.GuestCount, req.RoomTypePreference)
 	if err != nil {
+		if errors.Is(err, service.ErrNoRoomAvailable) {
+			dto.Error(c, errcode.ErrNoRoomAvailable)
+			return
+		}
 		dto.Error(c, errcode.ErrInternal)
 		return
 	}

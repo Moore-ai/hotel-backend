@@ -48,6 +48,14 @@ func (r *OrderRepo) FindByUserID(userID uint, page, pageSize int) ([]model.Order
 	return orders, total, err
 }
 
+func (r *OrderRepo) FindOverlappingOrders(roomID uint, checkIn, checkOut string) ([]model.Order, error) {
+	var orders []model.Order
+	err := r.db.Where("room_id = ? AND status != ? AND check_in_date < ? AND check_out_date > ?",
+		roomID, model.OrderStatusCancelled, checkOut, checkIn).
+		Find(&orders).Error
+	return orders, err
+}
+
 func (r *OrderRepo) Update(order *model.Order) error {
 	return r.db.Save(order).Error
 }

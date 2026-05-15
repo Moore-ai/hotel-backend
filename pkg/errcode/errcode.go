@@ -18,6 +18,7 @@ const (
 	ErrUsernameDuplicate  = 2002
 	ErrRoomNotFound       = 3001
 	ErrRoomOccupied       = 3002
+	ErrNoRoomAvailable    = 3003
 	ErrOrderNotFound      = 4001
 	ErrCheckinNotFound    = 5001
 	ErrAlreadyCheckedOut  = 5002
@@ -38,6 +39,7 @@ var messages = map[int]string{
 	ErrUsernameDuplicate:   "username already exists",
 	ErrRoomNotFound:        "room not found",
 	ErrRoomOccupied:        "room is currently occupied",
+	ErrNoRoomAvailable:     "no room available for the requested criteria",
 	ErrOrderNotFound:       "order not found",
 	ErrCheckinNotFound:     "checkin not found",
 	ErrAlreadyCheckedOut:   "already checked out",

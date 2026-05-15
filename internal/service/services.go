@@ -18,12 +18,13 @@ type Services struct {
 func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *Hub) *Services {
 	audit := NewAuditLogService(repos.Audit)
 	user := NewUserService(repos.User, audit)
+	allocator := NewRoomAllocator(repos.Room, repos.Order)
 	return &Services{
 		Auth:    NewAuthService(repos.User, user, jwtCfg),
 		User:    user,
 		Room:    NewRoomService(repos.Room, audit),
-		Order:   NewOrderService(repos.Order, audit),
-		Checkin: NewCheckinService(repos.Checkin, repos.Room, audit),
+		Order:   NewOrderService(repos.Order, repos.Room, allocator, audit),
+		Checkin: NewCheckinService(repos.Checkin, repos.Room, repos.Order, allocator, audit),
 		Notif:   NewNotificationService(repos.Notif, hub),
 		Audit:   audit,
 	}

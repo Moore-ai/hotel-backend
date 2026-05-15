@@ -39,6 +39,12 @@ func (r *RoomRepo) Update(room *model.Room) error {
 	return r.db.Save(room).Error
 }
 
+func (r *RoomRepo) FindByStatus(status string) ([]model.Room, error) {
+	var rooms []model.Room
+	err := r.db.Where("status = ?", status).Find(&rooms).Error
+	return rooms, err
+}
+
 func (r *RoomRepo) Delete(id uint) error {
 	return r.db.Delete(&model.Room{}, id).Error
 }

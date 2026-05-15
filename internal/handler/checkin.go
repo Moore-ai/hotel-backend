@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"strconv"
 	"time"
 
@@ -51,6 +52,10 @@ func (h *CheckinHandler) Create(c *gin.Context) {
 	}
 	checkin, err := h.checkinService.Create(req.OrderID, req.UserID, req.RoomID, expectedTime)
 	if err != nil {
+		if errors.Is(err, service.ErrNoRoomAvailable) {
+			dto.Error(c, errcode.ErrNoRoomAvailable)
+			return
+		}
 		dto.Error(c, errcode.ErrInternal)
 		return
 	}
