@@ -41,15 +41,15 @@ type RedisConfig struct {
 }
 
 type JWTConfig struct {
-	Secret             string
-	AccessTokenExpiry  time.Duration
-	RefreshTokenExpiry time.Duration
+	Secret             string        `mapstructure:"secret"`
+	AccessTokenExpiry  time.Duration `mapstructure:"access_token_expiry"`
+	RefreshTokenExpiry time.Duration `mapstructure:"refresh_token_expiry"`
 }
 
 type CheckoutConfig struct {
-	FirstThreshold    string
-	SecondThreshold   string
-	SchedulerInterval time.Duration
+	FirstThreshold    string `mapstructure:"first_threshold"`
+	SecondThreshold   string `mapstructure:"second_threshold"`
+	SchedulerInterval int    `mapstructure:"scheduler_interval"` // seconds
 }
 
 type AdminConfig struct {

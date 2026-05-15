@@ -1,16 +1,27 @@
 package service
 
 import (
+	"encoding/json"
+	"log"
+
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
 )
 
-type NotificationService struct {
-	repo *repository.NotificationRepo
+type wsMessage struct {
+	Type string       `json:"type"`
+	Data *model.Notification `json:"data"`
 }
 
-func NewNotificationService(repo *repository.NotificationRepo) *NotificationService {
-	return &NotificationService{repo: repo}
+const wsTypeNotification = "notification"
+
+type NotificationService struct {
+	repo *repository.NotificationRepo
+	hub  *Hub
+}
+
+func NewNotificationService(repo *repository.NotificationRepo, hub *Hub) *NotificationService {
+	return &NotificationService{repo: repo, hub: hub}
 }
 
 func (s *NotificationService) Create(userID uint, nType, title, content string) (*model.Notification, error) {
@@ -20,7 +31,18 @@ func (s *NotificationService) Create(userID uint, nType, title, content string) 
 		Title:   title,
 		Content: content,
 	}
-	return n, s.repo.Create(n)
+	if err := s.repo.Create(n); err != nil {
+		return nil, err
+	}
+
+	msg, err := json.Marshal(wsMessage{Type: wsTypeNotification, Data: n})
+	if err != nil {
+		log.Printf("Failed to marshal notification for WebSocket: %v", err)
+	} else {
+		s.hub.SendToUser(userID, msg)
+	}
+
+	return n, nil
 }
 
 func (s *NotificationService) FindByUserID(userID uint, page, pageSize int) ([]model.Notification, int64, error) {
