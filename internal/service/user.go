@@ -21,7 +21,7 @@ func NewUserService(repo *repository.UserRepo, auditLog *AuditLogService) *UserS
 func (s *UserService) Create(username, password, role, name, phone, email string) (*model.User, error) {
 	_, err := s.repo.FindByUsername(username)
 	if err == nil {
-		return nil, errors.New("username already exists")
+		return nil, ErrUsernameExists
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err

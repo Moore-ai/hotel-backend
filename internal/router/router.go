@@ -33,7 +33,9 @@ func registerAuthRoutes(api *gin.RouterGroup, authH *handler.AuthHandler) {
 	auth := api.Group("/auth")
 	{
 		auth.POST("/login", authH.Login)
+		auth.POST("/register", authH.Register)
 		auth.POST("/logout", middleware.Auth(), authH.Logout)
+		auth.DELETE("/account", middleware.Auth(), authH.DeleteAccount)
 	}
 }
 

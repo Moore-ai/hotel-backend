@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -45,7 +46,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 	}
 	user, err := h.userService.Create(req.Username, req.Password, req.Role, req.Name, req.Phone, req.Email)
 	if err != nil {
-		if err.Error() == "username already exists" {
+		if errors.Is(err, service.ErrUsernameExists) {
 			dto.Error(c, errcode.ErrUsernameDuplicate)
 			return
 		}
