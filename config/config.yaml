@@ -28,3 +28,6 @@ admin:
   username: "admin"
   password: "admin123"
   name: "超级管理员"
+
+allocation:
+  strategy: "low_floor" # low_floor, high_floor

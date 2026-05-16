@@ -8,12 +8,13 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	JWT      JWTConfig
-	Checkout CheckoutConfig
-	Admin    AdminConfig
+	Server     ServerConfig
+	Database   DatabaseConfig
+	Redis      RedisConfig
+	JWT        JWTConfig
+	Checkout   CheckoutConfig
+	Admin      AdminConfig
+	Allocation AllocationConfig
 }
 
 type ServerConfig struct {
@@ -56,6 +57,10 @@ type AdminConfig struct {
 	Username string
 	Password string
 	Name     string
+}
+
+type AllocationConfig struct {
+	Strategy string `mapstructure:"strategy"`
 }
 
 func Load(path string) (*Config, error) {

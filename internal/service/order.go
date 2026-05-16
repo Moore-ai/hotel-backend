@@ -1,13 +1,9 @@
 package service
 
 import (
-	"errors"
-
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
 )
-
-var ErrNoRoomAvailable = errors.New("no room available for the requested criteria")
 
 type OrderService struct {
 	repo      *repository.OrderRepo

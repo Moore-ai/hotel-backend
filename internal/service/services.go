@@ -15,10 +15,11 @@ type Services struct {
 	Audit   *AuditLogService
 }
 
-func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *Hub) *Services {
+func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *Hub, allocationCfg config.AllocationConfig) *Services {
 	audit := NewAuditLogService(repos.Audit)
 	user := NewUserService(repos.User, audit)
-	allocator := NewRoomAllocator(repos.Room, repos.Order)
+	strategy := NewStrategyFromConfig(allocationCfg.Strategy)
+	allocator := NewRoomAllocator(repos.Room, repos.Order, strategy)
 	return &Services{
 		Auth:    NewAuthService(repos.User, user, jwtCfg),
 		User:    user,

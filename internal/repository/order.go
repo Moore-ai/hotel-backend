@@ -56,6 +56,16 @@ func (r *OrderRepo) FindOverlappingOrders(roomID uint, checkIn, checkOut string)
 	return orders, err
 }
 
+func (r *OrderRepo) FindOverlappingRoomIDs(roomIDs []uint, checkIn, checkOut string) ([]uint, error) {
+	var result []uint
+	err := r.db.Model(&model.Order{}).
+		Distinct("room_id").
+		Where("room_id IN ? AND status != ? AND check_in_date < ? AND check_out_date > ?",
+			roomIDs, model.OrderStatusCancelled, checkOut, checkIn).
+		Pluck("room_id", &result).Error
+	return result, err
+}
+
 func (r *OrderRepo) Update(order *model.Order) error {
 	return r.db.Save(order).Error
 }

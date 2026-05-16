@@ -48,3 +48,9 @@ func (r *RoomRepo) FindByStatus(status string) ([]model.Room, error) {
 func (r *RoomRepo) Delete(id uint) error {
 	return r.db.Delete(&model.Room{}, id).Error
 }
+
+func (r *RoomRepo) FindAllRooms() ([]model.Room, error) {
+	var rooms []model.Room
+	err := r.db.Find(&rooms).Error
+	return rooms, err
+}
