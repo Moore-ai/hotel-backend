@@ -42,7 +42,7 @@ func (s *OrderService) Create(userID uint, roomID *uint, checkIn, checkOut strin
 			return nil, ErrNoRoomAvailable
 		}
 	} else {
-		allocatedRoom, err = roomRepo.FindByID(*roomID)
+		allocatedRoom, err = roomRepo.FindByIDForUpdate(*roomID)
 		if err != nil {
 			return nil, err
 		}
@@ -60,9 +60,12 @@ func (s *OrderService) Create(userID uint, roomID *uint, checkIn, checkOut strin
 		return nil, err
 	}
 
-	allocatedRoom.Status = model.RoomStatusReserved
-	if err := roomRepo.Update(allocatedRoom); err != nil {
+	ok, err := roomRepo.UpdateStatusIf(allocatedRoom.ID, model.RoomStatusVacant, model.RoomStatusReserved)
+	if err != nil {
 		return nil, err
+	}
+	if !ok {
+		return nil, ErrRoomAlreadyAllocated
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -88,7 +91,15 @@ func (s *OrderService) FindByUserID(userID uint, page, pageSize int) ([]model.Or
 }
 
 func (s *OrderService) Update(id uint, checkIn, checkOut, status string, price float64) (*model.Order, error) {
-	order, err := s.repo.FindByID(id)
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	defer tx.Rollback()
+
+	orderRepo := s.repo.WithTx(tx)
+
+	order, err := orderRepo.FindByID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -105,9 +116,14 @@ func (s *OrderService) Update(id uint, checkIn, checkOut, status string, price f
 	if price > 0 {
 		order.TotalPrice = price
 	}
-	if err := s.repo.Update(order); err != nil {
+	if err := orderRepo.Update(order); err != nil {
 		return nil, err
 	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
+	}
+
 	action := "updated"
 	if oldOrder.Status != order.Status {
 		switch order.Status {

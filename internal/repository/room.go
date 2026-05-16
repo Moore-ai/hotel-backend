@@ -4,6 +4,7 @@ import (
 	"hotel-backend/internal/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type RoomRepo struct {
@@ -81,4 +82,23 @@ func (r *RoomRepo) FindCandidates(filter RoomFilter) ([]model.Room, error) {
 
 func (r *RoomRepo) WithTx(tx *gorm.DB) *RoomRepo {
 	return &RoomRepo{db: tx}
+}
+
+func (r *RoomRepo) FindByIDForUpdate(id uint) (*model.Room, error) {
+	var room model.Room
+	err := r.db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&room, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &room, nil
+}
+
+func (r *RoomRepo) UpdateStatusIf(id uint, expectedStatus, newStatus string) (bool, error) {
+	result := r.db.Model(&model.Room{}).
+		Where("id = ? AND status = ?", id, expectedStatus).
+		Update("status", newStatus)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
 }

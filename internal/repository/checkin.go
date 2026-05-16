@@ -4,6 +4,7 @@ import (
 	"hotel-backend/internal/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type CheckinRepo struct {
@@ -54,4 +55,13 @@ func (r *CheckinRepo) Delete(id uint) error {
 
 func (r *CheckinRepo) WithTx(tx *gorm.DB) *CheckinRepo {
 	return &CheckinRepo{db: tx}
+}
+
+func (r *CheckinRepo) FindByIDForUpdate(id uint) (*model.Checkin, error) {
+	var checkin model.Checkin
+	err := r.db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&checkin, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &checkin, nil
 }

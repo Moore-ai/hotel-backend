@@ -60,22 +60,25 @@ func (s *CheckinService) Create(orderID *uint, userID, roomID uint, expectedTime
 		if err != nil {
 			return nil, err
 		}
-		allocatedRoom, err = roomRepo.FindByID(order.RoomID)
+		allocatedRoom, err = roomRepo.FindByIDForUpdate(order.RoomID)
 		if err != nil {
 			return nil, err
 		}
 		actualOrderID = orderID
 	} else {
-		allocatedRoom, err = roomRepo.FindByID(roomID)
+		allocatedRoom, err = roomRepo.FindByIDForUpdate(roomID)
 		if err != nil {
 			return nil, err
 		}
 		actualOrderID = nil
 	}
 
-	allocatedRoom.Status = model.RoomStatusOccupied
-	if err := roomRepo.Update(allocatedRoom); err != nil {
+	ok, err := roomRepo.UpdateStatusIf(allocatedRoom.ID, allocatedRoom.Status, model.RoomStatusOccupied)
+	if err != nil {
 		return nil, err
+	}
+	if !ok {
+		return nil, ErrRoomAlreadyAllocated
 	}
 
 	checkin := &model.Checkin{
@@ -109,30 +112,41 @@ func (s *CheckinService) FindAll(page, pageSize int) ([]model.Checkin, int64, er
 }
 
 func (s *CheckinService) Checkout(id uint) (*model.Checkin, error) {
-	checkin, err := s.repo.FindByID(id)
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	defer tx.Rollback()
+
+	checkinRepo := s.repo.WithTx(tx)
+	roomRepo := s.roomRepo.WithTx(tx)
+
+	checkin, err := checkinRepo.FindByIDForUpdate(id)
 	if err != nil {
 		return nil, err
 	}
 	if checkin.Status != model.CheckinStatusActive {
-		return nil, nil
+		return nil, ErrCheckinNotActive
 	}
 
 	now := time.Now()
 	checkin.CheckOutTime = &now
 	checkin.Status = model.CheckinStatusCompleted
 
-	if err := s.repo.Update(checkin); err != nil {
+	if err := checkinRepo.Update(checkin); err != nil {
 		return nil, err
 	}
 
-	room, err := s.roomRepo.FindByID(checkin.RoomID)
+	ok, err := roomRepo.UpdateStatusIf(checkin.RoomID, model.RoomStatusOccupied, model.RoomStatusVacant)
 	if err != nil {
-		log.Printf("Checkout: room %d not found for checkin %d: %v", checkin.RoomID, checkin.ID, err)
-	} else {
-		room.Status = model.RoomStatusVacant
-		if err := s.roomRepo.Update(room); err != nil {
-			log.Printf("Checkout: failed to update room %d status: %v", room.ID, err)
-		}
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrCheckinNotActive
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
 	}
 
 	if err := s.auditLog.Log(0, "checkout", "checkin", checkin.ID, nil, checkin, "办理签离"); err != nil {

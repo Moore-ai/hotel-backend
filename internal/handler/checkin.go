@@ -64,16 +64,16 @@ func (h *CheckinHandler) Create(c *gin.Context) {
 
 func (h *CheckinHandler) Checkout(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
-	checkin, err := h.checkinService.Checkout(uint(id))
+	_, err := h.checkinService.Checkout(uint(id))
 	if err != nil {
+		if errors.Is(err, service.ErrCheckinNotActive) {
+			dto.Error(c, errcode.ErrAlreadyCheckedOut)
+			return
+		}
 		dto.Error(c, errcode.ErrCheckinNotFound)
 		return
 	}
-	if checkin == nil {
-		dto.Error(c, errcode.ErrAlreadyCheckedOut)
-		return
-	}
-	dto.Success(c, checkin)
+	dto.Success(c, nil)
 }
 
 func (h *CheckinHandler) Delete(c *gin.Context) {

@@ -59,7 +59,12 @@ func (a *RoomAllocator) allocateWithRepos(roomRepo *repository.RoomRepo, orderRe
 		return nil, ErrNoRoomAvailable
 	}
 
-	return a.strategy.Select(availableRooms, req)
+	best, err := a.strategy.Select(availableRooms, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return roomRepo.FindByIDForUpdate(best.ID)
 }
 
 func checkDateAvailability(orderRepo *repository.OrderRepo, rooms []model.Room, checkIn, checkOut string) ([]model.Room, error) {
@@ -131,3 +136,7 @@ func NewStrategyFromConfig(strategyName string) AllocationStrategy {
 }
 
 var ErrNoRoomAvailable = errors.New("no room available for the requested criteria")
+
+var ErrRoomAlreadyAllocated = errors.New("room has already been allocated")
+
+var ErrCheckinNotActive = errors.New("checkin is not active")
