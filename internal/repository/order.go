@@ -48,10 +48,32 @@ func (r *OrderRepo) FindByUserID(userID uint, page, pageSize int) ([]model.Order
 	return orders, total, err
 }
 
+func (r *OrderRepo) FindOverlappingOrders(roomID uint, checkIn, checkOut string) ([]model.Order, error) {
+	var orders []model.Order
+	err := r.db.Where("room_id = ? AND status != ? AND check_in_date < ? AND check_out_date > ?",
+		roomID, model.OrderStatusCancelled, checkOut, checkIn).
+		Find(&orders).Error
+	return orders, err
+}
+
+func (r *OrderRepo) FindOverlappingRoomIDs(roomIDs []uint, checkIn, checkOut string) ([]uint, error) {
+	var result []uint
+	err := r.db.Model(&model.Order{}).
+		Distinct("room_id").
+		Where("room_id IN ? AND status != ? AND check_in_date < ? AND check_out_date > ?",
+			roomIDs, model.OrderStatusCancelled, checkOut, checkIn).
+		Pluck("room_id", &result).Error
+	return result, err
+}
+
 func (r *OrderRepo) Update(order *model.Order) error {
 	return r.db.Save(order).Error
 }
 
 func (r *OrderRepo) Delete(id uint) error {
 	return r.db.Delete(&model.Order{}, id).Error
+}
+
+func (r *OrderRepo) WithTx(tx *gorm.DB) *OrderRepo {
+	return &OrderRepo{db: tx}
 }

@@ -14,13 +14,14 @@ func NewRoomService(repo *repository.RoomRepo, auditLog *AuditLogService) *RoomS
 	return &RoomService{repo: repo, auditLog: auditLog}
 }
 
-func (s *RoomService) Create(roomNumber, roomType string, floor int, price float64, status, desc string) (*model.Room, error) {
+func (s *RoomService) Create(roomNumber, roomType string, capacity, floor int, price float64, status, desc string) (*model.Room, error) {
 	if status == "" {
-		status = "available"
+		status = model.RoomStatusVacant
 	}
 	room := &model.Room{
 		RoomNumber:    roomNumber,
 		Type:          roomType,
+		Capacity:      capacity,
 		Floor:         floor,
 		PricePerNight: price,
 		Status:        status,
@@ -41,7 +42,7 @@ func (s *RoomService) FindAll(page, pageSize int) ([]model.Room, int64, error) {
 	return s.repo.FindAll(page, pageSize)
 }
 
-func (s *RoomService) Update(id uint, roomNumber, roomType string, floor int, price float64, status, desc string) (*model.Room, error) {
+func (s *RoomService) Update(id uint, roomNumber, roomType string, capacity, floor int, price float64, status, desc string) (*model.Room, error) {
 	room, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, err
@@ -52,6 +53,9 @@ func (s *RoomService) Update(id uint, roomNumber, roomType string, floor int, pr
 	}
 	if roomType != "" {
 		room.Type = roomType
+	}
+	if capacity > 0 {
+		room.Capacity = capacity
 	}
 	if floor > 0 {
 		room.Floor = floor

@@ -39,6 +39,46 @@ func (r *RoomRepo) Update(room *model.Room) error {
 	return r.db.Save(room).Error
 }
 
+func (r *RoomRepo) FindByStatus(status string) ([]model.Room, error) {
+	var rooms []model.Room
+	err := r.db.Where("status = ?", status).Find(&rooms).Error
+	return rooms, err
+}
+
 func (r *RoomRepo) Delete(id uint) error {
 	return r.db.Delete(&model.Room{}, id).Error
+}
+
+func (r *RoomRepo) FindAllRooms() ([]model.Room, error) {
+	var rooms []model.Room
+	err := r.db.Find(&rooms).Error
+	return rooms, err
+}
+
+type RoomFilter struct {
+	MinCapacity int
+	Type        string
+	Floor       int
+}
+
+func (r *RoomRepo) FindCandidates(filter RoomFilter) ([]model.Room, error) {
+	var rooms []model.Room
+	query := r.db.Model(&model.Room{})
+
+	if filter.MinCapacity > 0 {
+		query = query.Where("capacity >= ?", filter.MinCapacity)
+	}
+	if filter.Type != "" {
+		query = query.Where("type = ?", filter.Type)
+	}
+	if filter.Floor > 0 {
+		query = query.Where("floor = ?", filter.Floor)
+	}
+
+	err := query.Find(&rooms).Error
+	return rooms, err
+}
+
+func (r *RoomRepo) WithTx(tx *gorm.DB) *RoomRepo {
+	return &RoomRepo{db: tx}
 }

@@ -40,7 +40,7 @@ func (r *CheckinRepo) FindAll(page, pageSize int) ([]model.Checkin, int64, error
 func (r *CheckinRepo) FindActive() ([]model.Checkin, error) {
 	var checkins []model.Checkin
 	err := r.db.Preload("User").Preload("Room").
-		Where("status = ?", "active").Find(&checkins).Error
+		Where("status = ?", model.CheckinStatusActive).Find(&checkins).Error
 	return checkins, err
 }
 
@@ -50,4 +50,8 @@ func (r *CheckinRepo) Update(checkin *model.Checkin) error {
 
 func (r *CheckinRepo) Delete(id uint) error {
 	return r.db.Delete(&model.Checkin{}, id).Error
+}
+
+func (r *CheckinRepo) WithTx(tx *gorm.DB) *CheckinRepo {
+	return &CheckinRepo{db: tx}
 }

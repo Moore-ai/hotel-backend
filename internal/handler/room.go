@@ -43,7 +43,7 @@ func (h *RoomHandler) Create(c *gin.Context) {
 		dto.Error(c, errcode.ErrBadRequest)
 		return
 	}
-	room, err := h.roomService.Create(req.RoomNumber, req.Type, req.Floor, req.PricePerNight, req.Status, req.Description)
+	room, err := h.roomService.Create(req.RoomNumber, req.Type, req.Capacity, req.Floor, req.PricePerNight, req.Status, req.Description)
 	if err != nil {
 		dto.Error(c, errcode.ErrInternal)
 		return
@@ -58,7 +58,7 @@ func (h *RoomHandler) Update(c *gin.Context) {
 		dto.Error(c, errcode.ErrBadRequest)
 		return
 	}
-	room, err := h.roomService.Update(uint(id), req.RoomNumber, req.Type, req.Floor, req.PricePerNight, req.Status, req.Description)
+	room, err := h.roomService.Update(uint(id), req.RoomNumber, req.Type, req.Capacity, req.Floor, req.PricePerNight, req.Status, req.Description)
 	if err != nil {
 		dto.Error(c, errcode.ErrRoomNotFound)
 		return

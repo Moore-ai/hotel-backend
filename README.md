@@ -15,8 +15,9 @@
 
 - **RBAC 权限控制** — 三种角色：`guest`（住户）、`employee`（员工）、`admin`（管理员）
 - **客房管理** — 支持房型、价格、状态等信息的增删改查
-- **订单系统** — 住户可下单，员工处理订单确认与取消
-- **入住 / 退房** — 追踪入住信息及预计退房时间
+- **房间自动分配** — 根据入住人数、房型偏好自动分配可用房间，支持低楼层优先策略
+- **订单系统** — 住户可下单，员工处理订单确认与取消，支持指定房间或自动分配
+- **入住 / 退房** — 追踪入住信息及预计退房时间，支持事务保证数据一致性
 - **自动通知** — 后台调度器自动提醒住户和员工处理超时未退房的情况
 - **审计日志** — 所有数据变更均记录不可篡改的日志，包含修改前后的完整快照
 - **统一响应格式** — 标准化的 JSON 响应结构与错误码
@@ -98,18 +99,78 @@ go run main.go
 
 ## 接口概览
 
-| 方法 | 接口 | 认证 | 角色 | 说明 |
-|------|------|------|------|------|
-| POST | `/api/v1/auth/login` | — | — | 登录，获取 JWT Token |
-| POST | `/api/v1/auth/logout` | ✅ | — | 登出，使 Token 失效 |
-| GET | `/api/v1/rooms` | ✅ | — | 获取客房列表 |
-| POST | `/api/v1/orders` | ✅ | — | 创建订单 |
-| GET | `/api/v1/orders` | ✅ | 全部 | 获取订单（住户仅能看到自己的） |
-| GET | `/api/v1/checkins` | ✅ | employee/admin | 获取入住记录 |
-| POST | `/api/v1/checkins` | ✅ | employee/admin | 办理入住 |
-| PUT | `/api/v1/checkins/:id/checkout` | ✅ | employee/admin | 办理退房 |
-| GET | `/api/v1/notifications` | ✅ | — | 获取通知 |
-| GET | `/api/v1/audit-logs` | ✅ | employee/admin | 查看审计日志 |
+### 认证接口
+
+| 方法 | 接口 | 认证 | 说明 |
+|------|------|------|------|
+| POST | `/api/v1/auth/login` | — | 登录，获取 JWT Token |
+| POST | `/api/v1/auth/register` | — | 住户注册 |
+| POST | `/api/v1/auth/logout` | ✅ | 登出，使 Token 失效 |
+| DELETE | `/api/v1/auth/account` | ✅ | 注销账号 |
+
+### 用户管理（员工/管理员）
+
+| 方法 | 接口 | 说明 |
+|------|------|------|
+| GET | `/api/v1/users` | 获取用户列表 |
+| GET | `/api/v1/users/:id` | 获取用户详情 |
+| POST | `/api/v1/users` | 创建用户 |
+| PUT | `/api/v1/users/:id` | 更新用户信息 |
+| DELETE | `/api/v1/users/:id` | 删除用户 |
+
+### 房间管理
+
+| 方法 | 接口 | 角色 | 说明 |
+|------|------|------|------|
+| GET | `/api/v1/rooms` | 全部 | 获取房间列表 |
+| GET | `/api/v1/rooms/:id` | 全部 | 获取房间详情 |
+| POST | `/api/v1/rooms` | employee/admin | 创建房间 |
+| PUT | `/api/v1/rooms/:id` | employee/admin | 更新房间信息 |
+| DELETE | `/api/v1/rooms/:id` | employee/admin | 删除房间 |
+
+### 订单管理
+
+| 方法 | 接口 | 角色 | 说明 |
+|------|------|------|------|
+| GET | `/api/v1/orders` | 全部 | 获取订单（住户仅能看到自己的） |
+| GET | `/api/v1/orders/:id` | 全部 | 获取订单详情 |
+| POST | `/api/v1/orders` | 全部 | 创建订单（支持自动分配房间） |
+| PUT | `/api/v1/orders/:id` | employee/admin | 更新订单 |
+| DELETE | `/api/v1/orders/:id` | employee/admin | 删除订单 |
+
+### 入住管理（员工/管理员）
+
+| 方法 | 接口 | 说明 |
+|------|------|------|
+| GET | `/api/v1/checkins` | 获取入住记录 |
+| GET | `/api/v1/checkins/:id` | 获取入住详情 |
+| POST | `/api/v1/checkins` | 办理入住 |
+| PUT | `/api/v1/checkins/:id/checkout` | 办理退房 |
+| DELETE | `/api/v1/checkins/:id` | 删除入住记录 |
+
+### 通知
+
+| 方法 | 接口 | 说明 |
+|------|------|------|
+| GET | `/api/v1/notifications` | 获取通知列表 |
+| GET | `/api/v1/notifications/unread` | 获取未读通知数量 |
+| PUT | `/api/v1/notifications/:id/read` | 标记通知已读 |
+
+### 其他
+
+| 方法 | 接口 | 角色 | 说明 |
+|------|------|------|------|
+| GET | `/api/v1/audit-logs` | employee/admin | 查看审计日志 |
+| GET | `/api/v1/ws` | 全部 | WebSocket 连接（实时通知） |
+
+### 房间自动分配
+
+创建订单时可选择指定房间或让系统自动分配：默认采用**低楼层优先**策略分配房间，可在 `config.yaml` 中配置：
+
+```yaml
+allocation:
+  strategy: "low_floor"  # low_floor（默认）或 high_floor
+```
 
 ## 认证方式
 

@@ -3,6 +3,7 @@ package repository
 import "gorm.io/gorm"
 
 type Repositories struct {
+	db       *gorm.DB
 	User     *UserRepo
 	Room     *RoomRepo
 	Order    *OrderRepo
@@ -14,6 +15,7 @@ type Repositories struct {
 
 func NewRepositories(db *gorm.DB) *Repositories {
 	return &Repositories{
+		db:       db,
 		User:     NewUserRepo(db),
 		Room:     NewRoomRepo(db),
 		Order:    NewOrderRepo(db),
@@ -22,4 +24,8 @@ func NewRepositories(db *gorm.DB) *Repositories {
 		Audit:    NewAuditLogRepo(db),
 		Schedule: NewCheckoutScheduleRepo(db),
 	}
+}
+
+func (r *Repositories) DB() *gorm.DB {
+	return r.db
 }
