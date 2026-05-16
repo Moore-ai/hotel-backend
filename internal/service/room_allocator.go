@@ -5,6 +5,7 @@ import (
 
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
+	"gorm.io/gorm"
 )
 
 type AllocateRequirements struct {
@@ -32,13 +33,25 @@ func NewRoomAllocator(roomRepo *repository.RoomRepo, orderRepo *repository.Order
 }
 
 func (a *RoomAllocator) Allocate(req AllocateRequirements, checkIn, checkOut string) (*model.Room, error) {
-	rooms, err := a.roomRepo.FindAllRooms()
+	return a.allocateWithRepos(a.roomRepo, a.orderRepo, req, checkIn, checkOut)
+}
+
+func (a *RoomAllocator) AllocateWithTx(tx *gorm.DB, req AllocateRequirements, checkIn, checkOut string) (*model.Room, error) {
+	return a.allocateWithRepos(a.roomRepo.WithTx(tx), a.orderRepo.WithTx(tx), req, checkIn, checkOut)
+}
+
+func (a *RoomAllocator) allocateWithRepos(roomRepo *repository.RoomRepo, orderRepo *repository.OrderRepo, req AllocateRequirements, checkIn, checkOut string) (*model.Room, error) {
+	filter := repository.RoomFilter{
+		MinCapacity: req.GuestCount,
+		Type:        req.RoomType,
+		Floor:       req.Floor,
+	}
+	candidates, err := roomRepo.FindCandidates(filter)
 	if err != nil {
 		return nil, err
 	}
 
-	candidates := filterCandidates(rooms, req)
-	availableRooms, err := a.checkDateAvailability(candidates, checkIn, checkOut)
+	availableRooms, err := checkDateAvailability(orderRepo, candidates, checkIn, checkOut)
 	if err != nil {
 		return nil, err
 	}
@@ -49,24 +62,7 @@ func (a *RoomAllocator) Allocate(req AllocateRequirements, checkIn, checkOut str
 	return a.strategy.Select(availableRooms, req)
 }
 
-func filterCandidates(rooms []model.Room, req AllocateRequirements) []model.Room {
-	var candidates []model.Room
-	for _, room := range rooms {
-		if req.GuestCount > 0 && room.Capacity < req.GuestCount {
-			continue
-		}
-		if req.RoomType != "" && room.Type != req.RoomType {
-			continue
-		}
-		if req.Floor > 0 && room.Floor != req.Floor {
-			continue
-		}
-		candidates = append(candidates, room)
-	}
-	return candidates
-}
-
-func (a *RoomAllocator) checkDateAvailability(rooms []model.Room, checkIn, checkOut string) ([]model.Room, error) {
+func checkDateAvailability(orderRepo *repository.OrderRepo, rooms []model.Room, checkIn, checkOut string) ([]model.Room, error) {
 	if len(rooms) == 0 {
 		return rooms, nil
 	}
@@ -76,7 +72,7 @@ func (a *RoomAllocator) checkDateAvailability(rooms []model.Room, checkIn, check
 		roomIDs[i] = room.ID
 	}
 
-	overlappingIDs, err := a.orderRepo.FindOverlappingRoomIDs(roomIDs, checkIn, checkOut)
+	overlappingIDs, err := orderRepo.FindOverlappingRoomIDs(roomIDs, checkIn, checkOut)
 	if err != nil {
 		return nil, err
 	}

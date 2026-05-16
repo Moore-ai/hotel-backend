@@ -6,6 +6,7 @@ import (
 
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
+	"gorm.io/gorm"
 )
 
 type CheckinService struct {
@@ -14,19 +15,30 @@ type CheckinService struct {
 	orderRepo *repository.OrderRepo
 	allocator *RoomAllocator
 	auditLog  *AuditLogService
+	db        *gorm.DB
 }
 
-func NewCheckinService(repo *repository.CheckinRepo, roomRepo *repository.RoomRepo, orderRepo *repository.OrderRepo, allocator *RoomAllocator, auditLog *AuditLogService) *CheckinService {
-	return &CheckinService{repo: repo, roomRepo: roomRepo, orderRepo: orderRepo, allocator: allocator, auditLog: auditLog}
+func NewCheckinService(repo *repository.CheckinRepo, roomRepo *repository.RoomRepo, orderRepo *repository.OrderRepo, allocator *RoomAllocator, auditLog *AuditLogService, db *gorm.DB) *CheckinService {
+	return &CheckinService{repo: repo, roomRepo: roomRepo, orderRepo: orderRepo, allocator: allocator, auditLog: auditLog, db: db}
 }
 
 func (s *CheckinService) Create(orderID *uint, userID, roomID uint, expectedTime time.Time) (*model.Checkin, error) {
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	defer tx.Rollback()
+
+	roomRepo := s.roomRepo.WithTx(tx)
+	orderRepo := s.orderRepo.WithTx(tx)
+	checkinRepo := s.repo.WithTx(tx)
+
 	var allocatedRoom *model.Room
 	var err error
 	var actualOrderID *uint
 
 	if orderID == nil && roomID == 0 {
-		allocatedRoom, err = s.allocator.Allocate(AllocateRequirements{}, time.Now().Format("2006-01-02"), expectedTime.Format("2006-01-02"))
+		allocatedRoom, err = s.allocator.AllocateWithTx(tx, AllocateRequirements{}, time.Now().Format("2006-01-02"), expectedTime.Format("2006-01-02"))
 		if err != nil {
 			return nil, ErrNoRoomAvailable
 		}
@@ -39,22 +51,22 @@ func (s *CheckinService) Create(orderID *uint, userID, roomID uint, expectedTime
 			TotalPrice:   0,
 			Status:       model.OrderStatusConfirmed,
 		}
-		if err := s.orderRepo.Create(order); err != nil {
+		if err := orderRepo.Create(order); err != nil {
 			return nil, err
 		}
 		actualOrderID = &order.ID
 	} else if orderID != nil {
-		order, err := s.orderRepo.FindByID(*orderID)
+		order, err := orderRepo.FindByID(*orderID)
 		if err != nil {
 			return nil, err
 		}
-		allocatedRoom, err = s.roomRepo.FindByID(order.RoomID)
+		allocatedRoom, err = roomRepo.FindByID(order.RoomID)
 		if err != nil {
 			return nil, err
 		}
 		actualOrderID = orderID
 	} else {
-		allocatedRoom, err = s.roomRepo.FindByID(roomID)
+		allocatedRoom, err = roomRepo.FindByID(roomID)
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +74,7 @@ func (s *CheckinService) Create(orderID *uint, userID, roomID uint, expectedTime
 	}
 
 	allocatedRoom.Status = model.RoomStatusOccupied
-	if err := s.roomRepo.Update(allocatedRoom); err != nil {
+	if err := roomRepo.Update(allocatedRoom); err != nil {
 		return nil, err
 	}
 
@@ -74,10 +86,17 @@ func (s *CheckinService) Create(orderID *uint, userID, roomID uint, expectedTime
 		ExpectedCheckoutTime: expectedTime,
 		Status:               model.CheckinStatusActive,
 	}
-	if err := s.repo.Create(checkin); err != nil {
+	if err := checkinRepo.Create(checkin); err != nil {
 		return nil, err
 	}
-	s.auditLog.Log(0, "checkin", "checkin", checkin.ID, nil, checkin, "办理入住")
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
+	}
+
+	if err := s.auditLog.Log(0, "checkin", "checkin", checkin.ID, nil, checkin, "办理入住"); err != nil {
+		log.Printf("Audit log failed for checkin %d: %v", checkin.ID, err)
+	}
 	return checkin, nil
 }
 
@@ -116,7 +135,9 @@ func (s *CheckinService) Checkout(id uint) (*model.Checkin, error) {
 		}
 	}
 
-	s.auditLog.Log(0, "checkout", "checkin", checkin.ID, nil, checkin, "办理签离")
+	if err := s.auditLog.Log(0, "checkout", "checkin", checkin.ID, nil, checkin, "办理签离"); err != nil {
+		log.Printf("Audit log failed for checkout %d: %v", checkin.ID, err)
+	}
 	return checkin, nil
 }
 

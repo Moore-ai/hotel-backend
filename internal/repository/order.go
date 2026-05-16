@@ -73,3 +73,7 @@ func (r *OrderRepo) Update(order *model.Order) error {
 func (r *OrderRepo) Delete(id uint) error {
 	return r.db.Delete(&model.Order{}, id).Error
 }
+
+func (r *OrderRepo) WithTx(tx *gorm.DB) *OrderRepo {
+	return &OrderRepo{db: tx}
+}

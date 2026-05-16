@@ -20,12 +20,13 @@ func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *H
 	user := NewUserService(repos.User, audit)
 	strategy := NewStrategyFromConfig(allocationCfg.Strategy)
 	allocator := NewRoomAllocator(repos.Room, repos.Order, strategy)
+	db := repos.DB()
 	return &Services{
 		Auth:    NewAuthService(repos.User, user, jwtCfg),
 		User:    user,
 		Room:    NewRoomService(repos.Room, audit),
-		Order:   NewOrderService(repos.Order, repos.Room, allocator, audit),
-		Checkin: NewCheckinService(repos.Checkin, repos.Room, repos.Order, allocator, audit),
+		Order:   NewOrderService(repos.Order, repos.Room, allocator, audit, db),
+		Checkin: NewCheckinService(repos.Checkin, repos.Room, repos.Order, allocator, audit, db),
 		Notif:   NewNotificationService(repos.Notif, hub),
 		Audit:   audit,
 	}

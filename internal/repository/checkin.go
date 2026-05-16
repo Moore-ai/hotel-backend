@@ -51,3 +51,7 @@ func (r *CheckinRepo) Update(checkin *model.Checkin) error {
 func (r *CheckinRepo) Delete(id uint) error {
 	return r.db.Delete(&model.Checkin{}, id).Error
 }
+
+func (r *CheckinRepo) WithTx(tx *gorm.DB) *CheckinRepo {
+	return &CheckinRepo{db: tx}
+}
