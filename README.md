@@ -29,7 +29,7 @@ hotel-backend/
 ├── config/              # 应用配置（Viper + YAML）
 ├── internal/
 │   ├── database/        # Postgres 与 Redis 初始化、数据迁移、种子数据
-│   ├── model/           # GORM 实体定义
+│   ├── model/           # GORM 实体定义（User + Guest/Employee/Admin 业务表）
 │   ├── repository/      # 数据访问层
 │   ├── service/         # 业务逻辑与后台调度器
 │   ├── handler/         # HTTP 处理器（Gin）
@@ -37,16 +37,67 @@ hotel-backend/
 │   ├── router/          # 路由注册
 │   └── dto/             # 请求/响应结构体
 ├── pkg/                 # 可复用工具（JWT、bcrypt、错误码）
+├── scripts/             # 集成测试脚本
 └── main.go
 ```
 
 ## 快速开始
 
-### 环境要求
+### 环境搭建
 
-- Go 1.25+
-- PostgreSQL 14+
-- Redis 6+
+#### 安装 Go
+
+下载对应系统的安装包，或使用包管理器：
+
+- **Windows**: 从 [go.dev/dl](https://go.dev/dl/) 下载 MSI 安装包
+- **macOS**: `brew install go`
+- **Linux**: `sudo apt install golang-go` 或下载二进制包
+
+验证安装：
+
+```bash
+go version  # 需输出 go 1.25+
+```
+
+#### 安装 PostgreSQL
+
+**Docker（推荐）**：
+
+```bash
+docker run -d \
+  --name hotel-postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=hotel \
+  -p 5432:5432 \
+  postgres:16
+```
+
+**直接安装**：
+
+- **Windows**: 从 [postgresql.org](https://www.postgresql.org/download/windows/) 下载安装程序
+- **macOS**: `brew install postgresql@16 && brew services start postgresql@16`
+- **Linux**: `sudo apt install postgresql postgresql-contrib`
+
+安装后创建数据库：
+
+```bash
+createdb -U postgres hotel
+```
+
+#### 安装 Redis
+
+**Docker（推荐）**：
+
+```bash
+docker run -d --name hotel-redis -p 6379:6379 redis:7
+```
+
+**直接安装**：
+
+- **Windows**: 从 [redis.io/download](https://redis.io/download/) 下载 MSI，或使用 WSL
+- **macOS**: `brew install redis && brew services start redis`
+- **Linux**: `sudo apt install redis-server`
 
 ### 1. 克隆与安装
 
@@ -58,33 +109,52 @@ go mod tidy
 
 ### 2. 配置
 
-编辑 `config/config.yaml`，或通过环境变量覆盖：
+编辑 `config/config.yaml`：
 
 ```yaml
 server:
   port: "8080"
 
 database:
-  host: "localhost"
-  port: "5432"
-  user: "postgres"
-  password: "postgres"
-  dbname: "hotel"
+  host: "localhost"      # DB_HOST
+  port: "5432"           # DB_PORT
+  user: "postgres"       # DB_USER
+  password: "postgres"   # DB_PASSWORD
+  dbname: "hotel"        # DB_NAME
   sslmode: "disable"
 
 redis:
-  addr: "localhost:6379"
+  addr: "localhost:6379" # REDIS_ADDR
+  password: ""           # REDIS_PASSWORD
+  db: 0                  # REDIS_DB
 
 jwt:
-  secret: "change-me-in-production"
+  secret: "change-me-in-production"  # JWT_SECRET
+  access_token_expiry: "2h"          # JWT_ACCESS_TOKEN_EXPIRY
+  refresh_token_expiry: "168h"       # JWT_REFRESH_TOKEN_EXPIRY
+
+checkout:
+  first_threshold: "12:00"   # CHECKOUT_FIRST_THRESHOLD
+  second_threshold: "18:00"  # CHECKOUT_SECOND_THRESHOLD
+  scheduler_interval: 300    # CHECKOUT_SCHEDULER_INTERVAL (秒)
+
+allocation:
+  strategy: "low_floor"     # low_floor 或 high_floor
 
 admin:
-  username: "admin"
-  password: "admin123"
-  name: "超级管理员"
+  username: "admin"         # ADMIN_USERNAME
+  password: "admin123"      # ADMIN_PASSWORD
+  name: "超级管理员"          # ADMIN_NAME
 ```
 
-以上配置均可通过同名环境变量覆盖，例如 `ADMIN_PASSWORD=MySecret123`。
+所有配置均可通过同名环境变量覆盖，例如：
+
+```bash
+export DB_PASSWORD=mysecret
+export JWT_SECRET=my-jwt-secret
+export ADMIN_PASSWORD=Admin123!
+go run main.go
+```
 
 ### 3. 运行
 
@@ -92,10 +162,10 @@ admin:
 go run main.go
 ```
 
-服务启动后会自动执行数据库迁移，并写入默认管理员账号（可在 `config.yaml` 或环境变量中修改）：
+服务启动后会自动执行数据库迁移，并写入默认管理员账号：
 
-- **用户名：** `admin`（`ADMIN_USERNAME`）
-- **密码：** `admin123`（`ADMIN_PASSWORD`）
+- **用户名：** `admin`（环境变量 `ADMIN_USERNAME`）
+- **密码：** `admin123`（环境变量 `ADMIN_PASSWORD`）
 
 ## 接口概览
 
@@ -103,20 +173,42 @@ go run main.go
 
 | 方法 | 接口 | 认证 | 说明 |
 |------|------|------|------|
-| POST | `/api/v1/auth/login` | — | 登录，获取 JWT Token |
+| POST | `/api/v1/auth/login` | — | 住户登录 |
+| POST | `/api/v1/auth/staff-login` | — | 员工/管理员登录 |
+| POST | `/api/v1/auth/admin-login` | — | 管理员登录 |
 | POST | `/api/v1/auth/register` | — | 住户注册 |
 | POST | `/api/v1/auth/logout` | ✅ | 登出，使 Token 失效 |
 | DELETE | `/api/v1/auth/account` | ✅ | 注销账号 |
 
-### 用户管理（员工/管理员）
+### 住户管理（全部认证用户）
 
 | 方法 | 接口 | 说明 |
 |------|------|------|
-| GET | `/api/v1/users` | 获取用户列表 |
-| GET | `/api/v1/users/:id` | 获取用户详情 |
-| POST | `/api/v1/users` | 创建用户 |
-| PUT | `/api/v1/users/:id` | 更新用户信息 |
-| DELETE | `/api/v1/users/:id` | 删除用户 |
+| GET | `/api/v1/guests` | 获取住户列表 |
+| GET | `/api/v1/guests/:id` | 获取住户详情 |
+| POST | `/api/v1/guests` | 创建住户 |
+| PUT | `/api/v1/guests/:id` | 更新住户信息 |
+| DELETE | `/api/v1/guests/:id` | 删除住户 |
+
+### 员工管理（员工/管理员）
+
+| 方法 | 接口 | 说明 |
+|------|------|------|
+| GET | `/api/v1/employees` | 获取员工列表 |
+| GET | `/api/v1/employees/:id` | 获取员工详情 |
+| POST | `/api/v1/employees` | 创建员工 |
+| PUT | `/api/v1/employees/:id` | 更新员工信息 |
+| DELETE | `/api/v1/employees/:id` | 删除员工 |
+
+### 管理员管理（仅管理员）
+
+| 方法 | 接口 | 说明 |
+|------|------|------|
+| GET | `/api/v1/admins` | 获取管理员列表 |
+| GET | `/api/v1/admins/:id` | 获取管理员详情 |
+| POST | `/api/v1/admins` | 创建管理员 |
+| PUT | `/api/v1/admins/:id` | 更新管理员信息 |
+| DELETE | `/api/v1/admins/:id` | 删除管理员 |
 
 ### 房间管理
 
@@ -174,10 +266,21 @@ allocation:
 
 ## 认证方式
 
-API 采用 JWT Bearer Token 认证：
+API 采用 JWT Bearer Token 认证，根据角色使用不同登录端点：
 
 ```bash
+# 住户登录
 curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"guest_user","password":"guest123"}'
+
+# 员工/管理员登录
+curl -X POST http://localhost:8080/api/v1/auth/staff-login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+
+# 管理员登录
+curl -X POST http://localhost:8080/api/v1/auth/admin-login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}'
 ```
