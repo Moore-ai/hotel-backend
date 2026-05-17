@@ -20,15 +20,35 @@ func SeedAdmin(cfg config.AdminConfig) error {
 	if err != nil {
 		return err
 	}
-	admin := &model.User{
+
+	tx := DB.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	adminUser := &model.User{
 		Username:     cfg.Username,
 		PasswordHash: pw,
 		Role:         "admin",
-		Name:         cfg.Name,
 	}
-	if err := DB.Create(admin).Error; err != nil {
+	if err := tx.Create(adminUser).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
+
+	adminProfile := &model.Admin{
+		UserID: adminUser.ID,
+		Name:   cfg.Name,
+	}
+	if err := tx.Create(adminProfile).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
 	log.Printf("Admin user seeded (%s/********)", cfg.Username)
 	return nil
 }

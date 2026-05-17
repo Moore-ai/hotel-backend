@@ -1,64 +1,103 @@
-// internal/service/auth.go
 package service
 
 import (
-	"context"
 	"errors"
-	"time"
 
-	"gorm.io/gorm"
 	"hotel-backend/config"
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
-	"hotel-backend/pkg/hash"
 	"hotel-backend/pkg/jwt"
-)
-
-var (
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrUsernameExists     = errors.New("username already exists")
+	"hotel-backend/pkg/hash"
 )
 
 type AuthService struct {
-	userRepo    *repository.UserRepo
-	userService *UserService
-	jwtCfg      config.JWTConfig
+	userRepo     *repository.UserRepo
+	guestRepo    *repository.GuestRepo
+	employeeRepo *repository.EmployeeRepo
+	adminRepo    *repository.AdminRepo
+	userService  *UserService
+	jwtCfg       config.JWTConfig
 }
 
-func NewAuthService(userRepo *repository.UserRepo, userService *UserService, jwtCfg config.JWTConfig) *AuthService {
-	return &AuthService{userRepo: userRepo, userService: userService, jwtCfg: jwtCfg}
+func NewAuthService(userRepo *repository.UserRepo, guestRepo *repository.GuestRepo, employeeRepo *repository.EmployeeRepo, adminRepo *repository.AdminRepo, userService *UserService, jwtCfg config.JWTConfig) *AuthService {
+	return &AuthService{
+		userRepo:     userRepo,
+		guestRepo:    guestRepo,
+		employeeRepo: employeeRepo,
+		adminRepo:    adminRepo,
+		userService:  userService,
+		jwtCfg:       jwtCfg,
+	}
 }
 
-func (s *AuthService) Login(username, password string) (string, string, int64, *model.User, error) {
+func (s *AuthService) Login(username, password string, allowedRoles ...string) (string, string, int64, *model.User, string, error) {
 	user, err := s.userRepo.FindByUsername(username)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", "", 0, nil, ErrInvalidCredentials
-		}
-		return "", "", 0, nil, err
+		return "", "", 0, nil, "", ErrInvalidCredentials
 	}
+
 	if !hash.CheckPassword(user.PasswordHash, password) {
-		return "", "", 0, nil, ErrInvalidCredentials
+		return "", "", 0, nil, "", ErrInvalidCredentials
 	}
 
-	accessExpiry := s.jwtCfg.AccessTokenExpiry * time.Second
-	refreshExpiry := s.jwtCfg.RefreshTokenExpiry * time.Second
+	if len(allowedRoles) > 0 {
+		roleAllowed := false
+		for _, r := range allowedRoles {
+			if user.Role == r {
+				roleAllowed = true
+				break
+			}
+		}
+		if !roleAllowed {
+			return "", "", 0, nil, "", ErrInvalidCredentials
+		}
+	}
 
-	accessToken, err := jwt.GenerateToken(user.ID, user.Role, s.jwtCfg.Secret, accessExpiry)
+	name := s.lookupProfileName(user.ID, user.Role)
+
+	accessExp := s.jwtCfg.AccessTokenExpiry
+	refreshExp := s.jwtCfg.RefreshTokenExpiry
+	accessToken, err := jwt.GenerateToken(user.ID, user.Role, s.jwtCfg.Secret, accessExp)
 	if err != nil {
-		return "", "", 0, nil, err
+		return "", "", 0, nil, "", err
 	}
-	refreshToken, err := jwt.GenerateToken(user.ID, user.Role, s.jwtCfg.Secret, refreshExpiry)
+	refreshToken, err := jwt.GenerateToken(user.ID, user.Role, s.jwtCfg.Secret, refreshExp)
 	if err != nil {
-		return "", "", 0, nil, err
+		return "", "", 0, nil, "", err
 	}
 
-	return accessToken, refreshToken, int64(accessExpiry.Seconds()), user, nil
+	return accessToken, refreshToken, int64(accessExp.Seconds()), user, name, nil
 }
 
-func (s *AuthService) Logout(ctx context.Context, token string, expiry time.Duration) error {
+func (s *AuthService) lookupProfileName(userID uint, role string) string {
+	switch role {
+	case "guest":
+		g, err := s.guestRepo.FindByUserID(userID)
+		if err == nil {
+			return g.Name
+		}
+	case "employee":
+		e, err := s.employeeRepo.FindByUserID(userID)
+		if err == nil {
+			return e.Name
+		}
+	case "admin":
+		a, err := s.adminRepo.FindByUserID(userID)
+		if err == nil {
+			return a.Name
+		}
+	}
+	return ""
+}
+
+func (s *AuthService) Logout() error {
 	return nil
 }
+
+var (
+	ErrInvalidCredentials = errors.New("invalid username or password")
+	ErrUsernameTaken      = errors.New("username already taken")
+)
 
 func (s *AuthService) Register(username, password, name, phone, email string) (*model.User, error) {
 	return s.userService.Create(username, password, "guest", name, phone, email)

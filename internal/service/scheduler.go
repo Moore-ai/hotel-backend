@@ -16,6 +16,7 @@ type Scheduler struct {
 	notifService   *NotificationService
 	checkinService *CheckinService
 	userRepo       *repository.UserRepo
+	guestRepo      *repository.GuestRepo
 	cfg            config.CheckoutConfig
 }
 
@@ -25,6 +26,7 @@ func NewScheduler(
 	notifService *NotificationService,
 	checkinService *CheckinService,
 	userRepo *repository.UserRepo,
+	guestRepo *repository.GuestRepo,
 	cfg config.CheckoutConfig,
 ) *Scheduler {
 	return &Scheduler{
@@ -33,6 +35,7 @@ func NewScheduler(
 		notifService:   notifService,
 		checkinService: checkinService,
 		userRepo:       userRepo,
+		guestRepo:      guestRepo,
 		cfg:            cfg,
 	}
 }
@@ -114,8 +117,12 @@ func (s *Scheduler) notifyGuest(c model.Checkin) {
 }
 
 func (s *Scheduler) notifyStaffAndAdmin(c model.Checkin, users []model.User) {
+	guestName := ""
+	if g, err := s.guestRepo.FindByUserID(c.UserID); err == nil {
+		guestName = g.Name
+	}
 	title := "超时签离告警"
-	content := fmt.Sprintf("住户 %s 在 %s 号房超时未签离，应签离时间 %s，请跟进。", c.User.Name, c.Room.RoomNumber, c.ExpectedCheckoutTime.Format("2006-01-02 15:04"))
+	content := fmt.Sprintf("住户 %s 在 %s 号房超时未签离，应签离时间 %s，请跟进。", guestName, c.Room.RoomNumber, c.ExpectedCheckoutTime.Format("2006-01-02 15:04"))
 
 	for _, u := range users {
 		s.notifService.Create(u.ID, "overdue_alert", title, content)

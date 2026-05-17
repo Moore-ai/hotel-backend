@@ -58,3 +58,7 @@ func (r *UserRepo) FindByRole(role string) ([]model.User, error) {
 	err := r.db.Where("role = ?", role).Find(&users).Error
 	return users, err
 }
+
+func (r *UserRepo) WithTx(tx *gorm.DB) *UserRepo {
+	return &UserRepo{db: tx}
+}

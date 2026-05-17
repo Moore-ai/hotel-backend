@@ -5,6 +5,9 @@ import "gorm.io/gorm"
 type Repositories struct {
 	db       *gorm.DB
 	User     *UserRepo
+	Guest    *GuestRepo
+	Employee *EmployeeRepo
+	Admin    *AdminRepo
 	Room     *RoomRepo
 	Order    *OrderRepo
 	Checkin  *CheckinRepo
@@ -17,6 +20,9 @@ func NewRepositories(db *gorm.DB) *Repositories {
 	return &Repositories{
 		db:       db,
 		User:     NewUserRepo(db),
+		Guest:    NewGuestRepo(db),
+		Employee: NewEmployeeRepo(db),
+		Admin:    NewAdminRepo(db),
 		Room:     NewRoomRepo(db),
 		Order:    NewOrderRepo(db),
 		Checkin:  NewCheckinRepo(db),

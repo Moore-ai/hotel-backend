@@ -7,6 +7,7 @@ import (
 )
 
 var staffOnly = middleware.RequireRoles("employee", "admin")
+var adminOnly = middleware.RequireRoles("admin")
 
 func Setup(handlers *handler.Handlers) *gin.Engine {
 	r := gin.Default()
@@ -19,7 +20,9 @@ func Setup(handlers *handler.Handlers) *gin.Engine {
 
 	api.Use(middleware.Auth())
 
-	registerUserRoutes(api, handlers.User)
+	registerGuestRoutes(api, handlers.Guest)
+	registerEmployeeRoutes(api, handlers.Employee)
+	registerAdminRoutes(api, handlers.Admin)
 	registerRoomRoutes(api, handlers.Room)
 	registerOrderRoutes(api, handlers.Order)
 	registerCheckinRoutes(api, handlers.Checkin)
@@ -33,20 +36,44 @@ func registerAuthRoutes(api *gin.RouterGroup, authH *handler.AuthHandler) {
 	auth := api.Group("/auth")
 	{
 		auth.POST("/login", authH.Login)
+		auth.POST("/staff-login", authH.StaffLogin)
+		auth.POST("/admin-login", authH.AdminLogin)
 		auth.POST("/register", authH.Register)
 		auth.POST("/logout", middleware.Auth(), authH.Logout)
 		auth.DELETE("/account", middleware.Auth(), authH.DeleteAccount)
 	}
 }
 
-func registerUserRoutes(api *gin.RouterGroup, userH *handler.UserHandler) {
-	users := api.Group("/users", staffOnly)
+func registerGuestRoutes(api *gin.RouterGroup, guestH *handler.GuestHandler) {
+	guests := api.Group("/guests")
 	{
-		users.GET("", userH.List)
-		users.GET("/:id", userH.Get)
-		users.POST("", userH.Create)
-		users.PUT("/:id", userH.Update)
-		users.DELETE("/:id", userH.Delete)
+		guests.GET("", guestH.List)
+		guests.GET("/:id", guestH.Get)
+		guests.POST("", guestH.Create)
+		guests.PUT("/:id", guestH.Update)
+		guests.DELETE("/:id", guestH.Delete)
+	}
+}
+
+func registerEmployeeRoutes(api *gin.RouterGroup, empH *handler.EmployeeHandler) {
+	employees := api.Group("/employees", staffOnly)
+	{
+		employees.GET("", empH.List)
+		employees.GET("/:id", empH.Get)
+		employees.POST("", empH.Create)
+		employees.PUT("/:id", empH.Update)
+		employees.DELETE("/:id", empH.Delete)
+	}
+}
+
+func registerAdminRoutes(api *gin.RouterGroup, adminH *handler.AdminHandler) {
+	admins := api.Group("/admins", adminOnly)
+	{
+		admins.GET("", adminH.List)
+		admins.GET("/:id", adminH.Get)
+		admins.POST("", adminH.Create)
+		admins.PUT("/:id", adminH.Update)
+		admins.DELETE("/:id", adminH.Delete)
 	}
 }
 

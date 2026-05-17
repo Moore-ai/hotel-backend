@@ -16,8 +16,8 @@ redis:
 
 jwt:
   secret: "change-me-in-production"
-  access_token_expiry: 7200   # 2 hours in seconds
-  refresh_token_expiry: 604800 # 7 days in seconds
+  access_token_expiry: "2h"
+  refresh_token_expiry: "168h"
 
 checkout:
   first_threshold: "12:00"

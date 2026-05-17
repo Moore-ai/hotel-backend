@@ -8,6 +8,9 @@ import (
 func AutoMigrate() error {
 	err := DB.AutoMigrate(
 		&model.User{},
+		&model.Guest{},
+		&model.Employee{},
+		&model.Admin{},
 		&model.Room{},
 		&model.Order{},
 		&model.Checkin{},

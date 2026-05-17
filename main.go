@@ -26,9 +26,9 @@ func main() {
 
 	repos := repository.NewRepositories(database.DB)
 	services := service.NewServices(repos, cfg.JWT, hub, cfg.Allocation)
-	handlers := handler.NewHandlers(services, hub, cfg.JWT)
+	handlers := handler.NewHandlers(services, repos, hub, cfg.JWT)
 
-	go service.NewScheduler(repos.Checkin, repos.Schedule, services.Notif, services.Checkin, repos.User, cfg.Checkout).Run()
+	go service.NewScheduler(repos.Checkin, repos.Schedule, services.Notif, services.Checkin, repos.User, repos.Guest, cfg.Checkout).Run()
 
 	r := router.Setup(handlers)
 
