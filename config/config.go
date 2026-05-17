@@ -14,7 +14,8 @@ type Config struct {
 	JWT        JWTConfig
 	Checkout   CheckoutConfig
 	Admin      AdminConfig
-	Allocation AllocationConfig
+	Allocation   AllocationConfig
+	Cancellation CancellationConfig
 }
 
 type ServerConfig struct {
@@ -61,6 +62,10 @@ type AdminConfig struct {
 
 type AllocationConfig struct {
 	Strategy string `mapstructure:"strategy"`
+}
+
+type CancellationConfig struct {
+	CutoffHours int `mapstructure:"cutoff_hours"`
 }
 
 func Load(path string) (*Config, error) {

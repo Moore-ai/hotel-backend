@@ -120,6 +120,10 @@ type UpdateOrderRequest struct {
 	Status       string  `json:"status"`
 }
 
+type CancelOrderRequest struct {
+	Reason string `json:"reason" binding:"required,min=2"`
+}
+
 type CreateCheckinRequest struct {
 	OrderID              *uint  `json:"order_id"`
 	UserID               uint   `json:"user_id" binding:"required"`

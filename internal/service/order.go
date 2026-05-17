@@ -1,23 +1,33 @@
 package service
 
 import (
+	"errors"
+	"fmt"
 	"log"
+	"time"
 
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
 	"gorm.io/gorm"
 )
 
+var ErrOrderNotFoundInCancel = errors.New("order not found")
+var ErrOrderNotBelongToUser = errors.New("order does not belong to the user")
+var ErrOrderNotPending = errors.New("order is not in pending status")
+var ErrRoomStatusConflict = errors.New("room status conflict during cancellation")
+
 type OrderService struct {
-	repo      *repository.OrderRepo
-	roomRepo  *repository.RoomRepo
-	allocator *RoomAllocator
-	auditLog  *AuditLogService
-	db        *gorm.DB
+	repo        *repository.OrderRepo
+	roomRepo    *repository.RoomRepo
+	allocator   *RoomAllocator
+	auditLog    *AuditLogService
+	notifSvc    *NotificationService
+	db          *gorm.DB
+	cutoffHours int
 }
 
-func NewOrderService(repo *repository.OrderRepo, roomRepo *repository.RoomRepo, allocator *RoomAllocator, auditLog *AuditLogService, db *gorm.DB) *OrderService {
-	return &OrderService{repo: repo, roomRepo: roomRepo, allocator: allocator, auditLog: auditLog, db: db}
+func NewOrderService(repo *repository.OrderRepo, roomRepo *repository.RoomRepo, allocator *RoomAllocator, auditLog *AuditLogService, notifSvc *NotificationService, db *gorm.DB, cutoffHours int) *OrderService {
+	return &OrderService{repo: repo, roomRepo: roomRepo, allocator: allocator, auditLog: auditLog, notifSvc: notifSvc, db: db, cutoffHours: cutoffHours}
 }
 
 func (s *OrderService) Create(userID uint, roomID *uint, checkIn, checkOut string, price float64, guestCount int, roomType string) (*model.Order, error) {
@@ -98,6 +108,7 @@ func (s *OrderService) Update(id uint, checkIn, checkOut, status string, price f
 	defer tx.Rollback()
 
 	orderRepo := s.repo.WithTx(tx)
+	roomRepo := s.roomRepo.WithTx(tx)
 
 	order, err := orderRepo.FindByID(id)
 	if err != nil {
@@ -111,6 +122,29 @@ func (s *OrderService) Update(id uint, checkIn, checkOut, status string, price f
 		order.CheckOutDate = checkOut
 	}
 	if status != "" {
+		if oldOrder.Status == model.OrderStatusCancelRequested {
+			if status != model.OrderStatusCancelled && status != model.OrderStatusPending {
+				return nil, fmt.Errorf("invalid status transition from cancel_requested to %s", status)
+			}
+			if status == model.OrderStatusCancelled {
+				ok, rErr := roomRepo.UpdateStatusIf(order.RoomID, model.RoomStatusReserved, model.RoomStatusVacant)
+				if rErr != nil {
+					return nil, rErr
+				}
+				if !ok {
+					return nil, ErrRoomStatusConflict
+				}
+				if _, err := s.notifSvc.Create(order.UserID, "cancel_approved", "取消申请已通过",
+					fmt.Sprintf("您的订单 #%d 取消申请已通过，房间已释放。", order.ID)); err != nil {
+					log.Printf("Notification failed for order %d: %v", order.ID, err)
+				}
+			} else {
+				if _, err := s.notifSvc.Create(order.UserID, "cancel_rejected", "取消申请已被驳回",
+					fmt.Sprintf("您的订单 #%d 取消申请未通过，订单恢复正常。", order.ID)); err != nil {
+					log.Printf("Notification failed for order %d: %v", order.ID, err)
+				}
+			}
+		}
 		order.Status = status
 	}
 	if price > 0 {
@@ -137,6 +171,77 @@ func (s *OrderService) Update(id uint, checkIn, checkOut, status string, price f
 		log.Printf("Audit log failed for order %d: %v", order.ID, err)
 	}
 	return order, nil
+}
+
+func (s *OrderService) Cancel(id, userID uint, reason string) (*model.Order, bool, error) {
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return nil, false, tx.Error
+	}
+	defer tx.Rollback()
+
+	orderRepo := s.repo.WithTx(tx)
+	roomRepo := s.roomRepo.WithTx(tx)
+
+	order, err := orderRepo.FindByID(id)
+	if err != nil {
+		return nil, false, ErrOrderNotFoundInCancel
+	}
+	if order.UserID != userID {
+		return nil, false, ErrOrderNotBelongToUser
+	}
+	if order.Status != model.OrderStatusPending {
+		return nil, false, ErrOrderNotPending
+	}
+
+	order.CancelReason = reason
+
+	checkInTime, err := time.Parse("2006-01-02", order.CheckInDate)
+	if err != nil {
+		return nil, false, err
+	}
+
+	hoursUntilCheckIn := time.Until(checkInTime).Hours()
+
+	if hoursUntilCheckIn <= 0 {
+		return nil, false, errors.New("cannot cancel an order on or past check-in date")
+	}
+
+	autoCancel := hoursUntilCheckIn > float64(s.cutoffHours)
+
+	if autoCancel {
+		ok, err := roomRepo.UpdateStatusIf(order.RoomID, model.RoomStatusReserved, model.RoomStatusVacant)
+		if err != nil {
+			return nil, false, err
+		}
+		if !ok {
+			return nil, false, ErrRoomStatusConflict
+		}
+		order.Status = model.OrderStatusCancelled
+	} else {
+		order.Status = model.OrderStatusCancelRequested
+	}
+
+	if err := orderRepo.Update(order); err != nil {
+		return nil, false, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, false, err
+	}
+
+	if err := s.auditLog.Log(userID, "cancelled", "order", order.ID, nil, order, "取消订单: "+reason); err != nil {
+		log.Printf("Audit log failed for order %d: %v", order.ID, err)
+	}
+
+	if autoCancel {
+		if _, err := s.notifSvc.Create(userID, "order_cancelled", "订单已取消",
+			fmt.Sprintf("您的订单 #%d 已自动取消。原因：%s", order.ID, reason)); err != nil {
+			log.Printf("Notification failed for order %d: %v", order.ID, err)
+		}
+	}
+
+	return order, autoCancel, nil
 }
 
 func (s *OrderService) Delete(id uint) error {
