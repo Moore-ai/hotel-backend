@@ -1,5 +1,6 @@
 .vscode/
 *.md
+!api-docs/*.md
 hotel-backend.exe
 
 !README.md
