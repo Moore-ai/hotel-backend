@@ -4,6 +4,7 @@ import (
 	"hotel-backend/internal/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type WaiterRepo struct {
@@ -64,5 +65,12 @@ func (r *WaiterRepo) ClearServingRoom(id uint) error {
 func (r *WaiterRepo) FindIdle() ([]model.Waiter, error) {
 	var waiters []model.Waiter
 	err := r.db.Preload("User").Where("serving_room_id IS NULL").Find(&waiters).Error
+	return waiters, err
+}
+
+func (r *WaiterRepo) FindIdleWithLock(tx *gorm.DB) ([]model.Waiter, error) {
+	var waiters []model.Waiter
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Preload("User").Where("serving_room_id IS NULL").Find(&waiters).Error
 	return waiters, err
 }

@@ -58,19 +58,31 @@ func (s *WaiterService) Update(id uint, name, phone, email string) (*model.Waite
 }
 
 func (s *WaiterService) Dispatch(roomID uint, guestUserID uint, serviceType, note string) (*model.Waiter, error) {
-	// 查找空闲服务员
-	idle, err := s.repo.FindIdle()
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	idle, err := s.repo.FindIdleWithLock(tx)
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	if len(idle) == 0 {
+		tx.Rollback()
 		return nil, ErrNoWaiterAvailable
 	}
 
-	// 随机派单
 	chosen := &idle[rand.Intn(len(idle))]
 	chosen.ServingRoomID = &roomID
-	if err := s.repo.Update(chosen); err != nil {
+	if err := s.repo.WithTx(tx).Update(chosen); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
 
@@ -97,6 +109,15 @@ func (s *WaiterService) Dispatch(roomID uint, guestUserID uint, serviceType, not
 
 	if _, err := s.notifSvc.Create(guestUserID, "waiter_assigned", "服务员已派单", content); err != nil {
 		log.Printf("Notification failed for user %d: %v", guestUserID, err)
+	}
+
+	// 通知服务员
+	waiterContent := serviceType
+	if note != "" {
+		waiterContent += "（" + note + "）"
+	}
+	if _, err := s.notifSvc.Create(chosen.UserID, "waiter_task", "新服务任务", waiterContent); err != nil {
+		log.Printf("Notification failed for waiter %d: %v", chosen.UserID, err)
 	}
 
 	return chosen, nil
