@@ -2,7 +2,6 @@ package handler
 
 import (
 	"errors"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"hotel-backend/internal/dto"
@@ -40,8 +39,12 @@ func (h *OrderHandler) List(c *gin.Context) {
 }
 
 func (h *OrderHandler) Get(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
-	order, err := h.orderService.FindByID(uint(id))
+	id, err := h.orderService.DecodeCode(c.Param("code"))
+	if err != nil {
+		dto.Error(c, errcode.ErrNotFound)
+		return
+	}
+	order, err := h.orderService.FindByID(id)
 	if err != nil {
 		dto.Error(c, errcode.ErrOrderNotFound)
 		return
@@ -81,13 +84,17 @@ func (h *OrderHandler) Create(c *gin.Context) {
 }
 
 func (h *OrderHandler) Update(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	id, err := h.orderService.DecodeCode(c.Param("code"))
+	if err != nil {
+		dto.Error(c, errcode.ErrNotFound)
+		return
+	}
 	var req dto.UpdateOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		dto.Error(c, errcode.ErrBadRequest)
 		return
 	}
-	order, err := h.orderService.Update(uint(id), req.CheckInDate, req.CheckOutDate, req.Status, req.TotalPrice)
+	order, err := h.orderService.Update(id, req.CheckInDate, req.CheckOutDate, req.Status, req.TotalPrice)
 	if err != nil {
 		dto.Error(c, errcode.ErrOrderNotFound)
 		return
@@ -106,8 +113,12 @@ func (h *OrderHandler) ListCancelRequests(c *gin.Context) {
 }
 
 func (h *OrderHandler) Confirm(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
-	order, err := h.orderService.Confirm(uint(id))
+	id, err := h.orderService.DecodeCode(c.Param("code"))
+	if err != nil {
+		dto.Error(c, errcode.ErrNotFound)
+		return
+	}
+	order, err := h.orderService.Confirm(id)
 	if err != nil {
 		if errors.Is(err, service.ErrOrderNotPending) {
 			dto.Error(c, errcode.ErrOrderNotPending)
@@ -120,7 +131,11 @@ func (h *OrderHandler) Confirm(c *gin.Context) {
 }
 
 func (h *OrderHandler) Cancel(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	id, err := h.orderService.DecodeCode(c.Param("code"))
+	if err != nil {
+		dto.Error(c, errcode.ErrNotFound)
+		return
+	}
 	userID := c.GetUint("user_id")
 
 	var req dto.CancelOrderRequest
@@ -129,7 +144,7 @@ func (h *OrderHandler) Cancel(c *gin.Context) {
 		return
 	}
 
-	order, autoCancelled, err := h.orderService.Cancel(uint(id), userID, req.Reason)
+	order, autoCancelled, err := h.orderService.Cancel(id, userID, req.Reason)
 	if err != nil {
 		if errors.Is(err, service.ErrOrderNotFoundInCancel) {
 			dto.Error(c, errcode.ErrOrderNotFound)
@@ -152,7 +167,7 @@ func (h *OrderHandler) Cancel(c *gin.Context) {
 	}
 
 	dto.Success(c, gin.H{
-		"id":             order.ID,
+		"id":             order.OrderCode,
 		"status":         order.Status,
 		"auto_cancelled": autoCancelled,
 		"cancel_reason":  order.CancelReason,
@@ -160,8 +175,12 @@ func (h *OrderHandler) Cancel(c *gin.Context) {
 }
 
 func (h *OrderHandler) Delete(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err := h.orderService.Delete(uint(id)); err != nil {
+	id, err := h.orderService.DecodeCode(c.Param("code"))
+	if err != nil {
+		dto.Error(c, errcode.ErrNotFound)
+		return
+	}
+	if err := h.orderService.Delete(id); err != nil {
 		dto.Error(c, errcode.ErrOrderNotFound)
 		return
 	}

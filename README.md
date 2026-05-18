@@ -228,12 +228,13 @@ go run main.go
 | 方法 | 接口 | 角色 | 说明 |
 |------|------|------|------|
 | GET | `/api/v1/orders` | 全部 | 获取订单（住户仅能看到自己的） |
-| GET | `/api/v1/orders/:id` | 全部 | 获取订单详情 |
-| POST | `/api/v1/orders` | 全部 | 创建订单（支持自动分配房间） |
-| POST | `/api/v1/orders/:id/cancel` | 全部 | 取消订单（住户取消自己的 pending 订单） |
+| GET | `/api/v1/orders/:id` | 全部 | 获取订单详情（返回加密 code） |
+| POST | `/api/v1/orders` | 全部 | 创建订单（返回加密 code 而非真实 ID） |
+| POST | `/api/v1/orders/:code/cancel` | 全部 | 取消订单（住户凭 code 取消自己的 pending 订单） |
 | GET | `/api/v1/orders/cancel-requests` | employee/admin | 获取待审核的取消请求 |
-| PUT | `/api/v1/orders/:id` | employee/admin | 更新订单（含审批取消请求） |
-| DELETE | `/api/v1/orders/:id` | employee/admin | 删除订单 |
+| POST | `/api/v1/orders/:code/confirm` | employee/admin | 确认入住（员工凭 code 确认订单） |
+| PUT | `/api/v1/orders/:code` | employee/admin | 更新订单（含审批取消请求） |
+| DELETE | `/api/v1/orders/:code` | employee/admin | 删除订单 |
 
 ### 入住管理（员工/管理员）
 
@@ -276,7 +277,8 @@ allocation:
 - **距入住 > `cutoff_hours`**：自动取消，房间释放为 `vacant`
 - **距入住 ≤ `cutoff_hours`**：进入 `cancel_requested` 待审核，通知全体员工
 - **入住日期已过**：拒绝取消
-- 员工通过 `PUT /orders/:id` 审批（`cancelled` 通过，`pending` 驳回），结果 WebSocket 通知客户
+- 员工通过 `PUT /orders/:code` 审批（`cancelled` 通过，`pending` 驳回），结果 WebSocket 通知客户
+- 订单 ID 使用加密 code 替代，前端全程仅接触加密 code，真实 ID 不对外暴露
 
 ```yaml
 cancellation:
