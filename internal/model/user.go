@@ -6,6 +6,7 @@ const (
 	RoleGuest    = "guest"
 	RoleEmployee = "employee"
 	RoleAdmin    = "admin"
+	RoleWaiter   = "waiter"
 )
 
 type User struct {

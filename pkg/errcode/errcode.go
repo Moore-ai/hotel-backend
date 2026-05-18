@@ -19,6 +19,7 @@ const (
 	ErrRoomNotFound       = 3001
 	ErrRoomOccupied       = 3002
 	ErrNoRoomAvailable    = 3003
+	ErrNoWaiterAvailable  = 3004
 	ErrOrderNotFound      = 4001
 	ErrOrderNotPending    = 4002
 	ErrCheckinNotFound    = 5001
@@ -41,6 +42,7 @@ var messages = map[int]string{
 	ErrRoomNotFound:        "room not found",
 	ErrRoomOccupied:        "room is currently occupied",
 	ErrNoRoomAvailable:     "no room available for the requested criteria",
+	ErrNoWaiterAvailable:   "no waiter available",
 	ErrOrderNotFound:       "order not found",
 	ErrOrderNotPending:     "order status is not pending, cannot cancel",
 	ErrCheckinNotFound:     "checkin not found",
