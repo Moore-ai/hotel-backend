@@ -105,6 +105,20 @@ func (h *OrderHandler) ListCancelRequests(c *gin.Context) {
 	dto.Success(c, dto.PageData{List: orders, Total: total, Page: p.Page, PageSize: p.PageSize})
 }
 
+func (h *OrderHandler) Confirm(c *gin.Context) {
+	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	order, err := h.orderService.Confirm(uint(id))
+	if err != nil {
+		if errors.Is(err, service.ErrOrderNotPending) {
+			dto.Error(c, errcode.ErrOrderNotPending)
+			return
+		}
+		dto.Error(c, errcode.ErrOrderNotFound)
+		return
+	}
+	dto.Success(c, order)
+}
+
 func (h *OrderHandler) Cancel(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 	userID := c.GetUint("user_id")

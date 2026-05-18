@@ -175,6 +175,39 @@ func (s *OrderService) Update(id uint, checkIn, checkOut, status string, price f
 	return order, nil
 }
 
+func (s *OrderService) Confirm(id uint) (*model.Order, error) {
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	defer tx.Rollback()
+
+	orderRepo := s.repo.WithTx(tx)
+
+	order, err := orderRepo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if order.Status != model.OrderStatusPending {
+		return nil, ErrOrderNotPending
+	}
+
+	oldOrder := *order
+	order.Status = model.OrderStatusConfirmed
+	if err := orderRepo.Update(order); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
+	}
+
+	if err := s.auditLog.Log(0, "confirmed", "order", order.ID, &oldOrder, order, "确认订单"); err != nil {
+		log.Printf("Audit log failed for order %d: %v", order.ID, err)
+	}
+	return order, nil
+}
+
 func (s *OrderService) Cancel(id, userID uint, reason string) (*model.Order, bool, error) {
 	tx := s.db.Begin()
 	if tx.Error != nil {
