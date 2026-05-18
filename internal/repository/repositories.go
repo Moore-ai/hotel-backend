@@ -8,6 +8,7 @@ type Repositories struct {
 	Guest    *GuestRepo
 	Employee *EmployeeRepo
 	Admin    *AdminRepo
+	Waiter   *WaiterRepo
 	Room     *RoomRepo
 	Order    *OrderRepo
 	Checkin  *CheckinRepo
@@ -23,6 +24,7 @@ func NewRepositories(db *gorm.DB) *Repositories {
 		Guest:    NewGuestRepo(db),
 		Employee: NewEmployeeRepo(db),
 		Admin:    NewAdminRepo(db),
+		Waiter:   NewWaiterRepo(db),
 		Room:     NewRoomRepo(db),
 		Order:    NewOrderRepo(db),
 		Checkin:  NewCheckinRepo(db),
