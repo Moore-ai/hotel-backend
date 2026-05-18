@@ -92,6 +92,12 @@ func (h *WaiterHandler) ServiceRequest(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	role := c.GetString("role")
 
+	var req dto.ServiceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		dto.Error(c, errcode.ErrBadRequest)
+		return
+	}
+
 	checkin, err := h.checkinService.FindByID(uint(checkinID))
 	if err != nil {
 		dto.Error(c, errcode.ErrCheckinNotFound)
@@ -106,7 +112,7 @@ func (h *WaiterHandler) ServiceRequest(c *gin.Context) {
 		return
 	}
 
-	waiter, err := h.waiterService.Dispatch(checkin.RoomID, checkin.UserID)
+	waiter, err := h.waiterService.Dispatch(checkin.RoomID, checkin.UserID, req.ServiceType, req.Note)
 	if err != nil {
 		if errors.Is(err, service.ErrNoWaiterAvailable) {
 			h.waiterService.NotifyWaiting(checkin.UserID)

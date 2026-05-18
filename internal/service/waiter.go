@@ -57,7 +57,7 @@ func (s *WaiterService) Update(id uint, name, phone, email string) (*model.Waite
 	return waiter, nil
 }
 
-func (s *WaiterService) Dispatch(roomID uint, guestUserID uint) (*model.Waiter, error) {
+func (s *WaiterService) Dispatch(roomID uint, guestUserID uint, serviceType, note string) (*model.Waiter, error) {
 	// 查找空闲服务员
 	idle, err := s.repo.FindIdle()
 	if err != nil {
@@ -86,7 +86,14 @@ func (s *WaiterService) Dispatch(roomID uint, guestUserID uint) (*model.Waiter, 
 	if chosen.Phone != "" {
 		content += "（电话：" + chosen.Phone + "）"
 	}
-	content += "正在前往您的房间，请稍候。"
+	content += "正在前往您的房间"
+	if serviceType != "" {
+		content += "处理「" + serviceType + "」"
+	}
+	if note != "" {
+		content += "（备注：" + note + "）"
+	}
+	content += "，请稍候。"
 
 	if _, err := s.notifSvc.Create(guestUserID, "waiter_assigned", "服务员已派单", content); err != nil {
 		log.Printf("Notification failed for user %d: %v", guestUserID, err)

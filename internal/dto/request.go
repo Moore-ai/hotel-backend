@@ -138,6 +138,11 @@ type UpdateWaiterRequest struct {
 	Email string `json:"email"`
 }
 
+type ServiceRequest struct {
+	ServiceType string `json:"service_type" binding:"required"`
+	Note        string `json:"note"`
+}
+
 type CreateCheckinRequest struct {
 	OrderID              *uint  `json:"order_id"`
 	UserID               uint   `json:"user_id" binding:"required"`
