@@ -8,6 +8,8 @@ import (
 
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
+	"hotel-backend/pkg/obfuscate"
+	"github.com/speps/go-hashids/v2"
 	"gorm.io/gorm"
 )
 
@@ -18,18 +20,38 @@ var ErrRoomStatusConflict = errors.New("room status conflict during cancellation
 var ErrPastCheckIn = errors.New("cannot cancel an order past check-in date")
 
 type OrderService struct {
-	repo        *repository.OrderRepo
-	roomRepo    *repository.RoomRepo
-	userRepo    *repository.UserRepo
-	allocator   *RoomAllocator
-	auditLog    *AuditLogService
-	notifSvc    *NotificationService
-	db          *gorm.DB
-	cutoffHours int
+	repo          *repository.OrderRepo
+	roomRepo      *repository.RoomRepo
+	userRepo      *repository.UserRepo
+	allocator     *RoomAllocator
+	auditLog      *AuditLogService
+	notifSvc      *NotificationService
+	db            *gorm.DB
+	cutoffHours   int
+	obfuscateKey  *hashids.HashID
 }
 
-func NewOrderService(repo *repository.OrderRepo, roomRepo *repository.RoomRepo, userRepo *repository.UserRepo, allocator *RoomAllocator, auditLog *AuditLogService, notifSvc *NotificationService, db *gorm.DB, cutoffHours int) *OrderService {
-	return &OrderService{repo: repo, roomRepo: roomRepo, userRepo: userRepo, allocator: allocator, auditLog: auditLog, notifSvc: notifSvc, db: db, cutoffHours: cutoffHours}
+func NewOrderService(repo *repository.OrderRepo, roomRepo *repository.RoomRepo, userRepo *repository.UserRepo, allocator *RoomAllocator, auditLog *AuditLogService, notifSvc *NotificationService, db *gorm.DB, cutoffHours int, obfuscateKey *hashids.HashID) *OrderService {
+	return &OrderService{repo: repo, roomRepo: roomRepo, userRepo: userRepo, allocator: allocator, auditLog: auditLog, notifSvc: notifSvc, db: db, cutoffHours: cutoffHours, obfuscateKey: obfuscateKey}
+}
+
+func (s *OrderService) DecodeCode(code string) (uint, error) {
+	return obfuscate.Decode(s.obfuscateKey, code)
+}
+
+func (s *OrderService) encodeOrder(o *model.Order) {
+	code, err := obfuscate.Encode(s.obfuscateKey, o.ID)
+	if err != nil {
+		log.Printf("Failed to encode order %d: %v", o.ID, err)
+		return
+	}
+	o.OrderCode = code
+}
+
+func (s *OrderService) encodeOrders(orders []model.Order) {
+	for i := range orders {
+		s.encodeOrder(&orders[i])
+	}
 }
 
 func (s *OrderService) Create(userID uint, roomID *uint, checkIn, checkOut string, price float64, guestCount int, roomType string) (*model.Order, error) {
@@ -87,19 +109,32 @@ func (s *OrderService) Create(userID uint, roomID *uint, checkIn, checkOut strin
 	if err := s.auditLog.Log(0, "created", "order", order.ID, nil, order, "创建订单"); err != nil {
 		log.Printf("Audit log failed for order %d: %v", order.ID, err)
 	}
+	s.encodeOrder(order)
 	return order, nil
 }
 
 func (s *OrderService) FindByID(id uint) (*model.Order, error) {
-	return s.repo.FindByID(id)
+	order, err := s.repo.FindByID(id)
+	if err == nil {
+		s.encodeOrder(order)
+	}
+	return order, err
 }
 
 func (s *OrderService) FindAll(page, pageSize int) ([]model.Order, int64, error) {
-	return s.repo.FindAll(page, pageSize)
+	orders, total, err := s.repo.FindAll(page, pageSize)
+	if err == nil {
+		s.encodeOrders(orders)
+	}
+	return orders, total, err
 }
 
 func (s *OrderService) FindByUserID(userID uint, page, pageSize int) ([]model.Order, int64, error) {
-	return s.repo.FindByUserID(userID, page, pageSize)
+	orders, total, err := s.repo.FindByUserID(userID, page, pageSize)
+	if err == nil {
+		s.encodeOrders(orders)
+	}
+	return orders, total, err
 }
 
 func (s *OrderService) Update(id uint, checkIn, checkOut, status string, price float64) (*model.Order, error) {
@@ -172,6 +207,7 @@ func (s *OrderService) Update(id uint, checkIn, checkOut, status string, price f
 	if err := s.auditLog.Log(0, action, "order", order.ID, &oldOrder, order, "修改订单"); err != nil {
 		log.Printf("Audit log failed for order %d: %v", order.ID, err)
 	}
+	s.encodeOrder(order)
 	return order, nil
 }
 
@@ -205,6 +241,7 @@ func (s *OrderService) Confirm(id uint) (*model.Order, error) {
 	if err := s.auditLog.Log(0, "confirmed", "order", order.ID, &oldOrder, order, "确认订单"); err != nil {
 		log.Printf("Audit log failed for order %d: %v", order.ID, err)
 	}
+	s.encodeOrder(order)
 	return order, nil
 }
 
@@ -280,11 +317,16 @@ func (s *OrderService) Cancel(id, userID uint, reason string) (*model.Order, boo
 		s.notifyStaffCancelRequest(order)
 	}
 
+	s.encodeOrder(order)
 	return order, autoCancel, nil
 }
 
 func (s *OrderService) FindCancelRequests(page, pageSize int) ([]model.Order, int64, error) {
-	return s.repo.FindByStatus(model.OrderStatusCancelRequested, page, pageSize)
+	orders, total, err := s.repo.FindByStatus(model.OrderStatusCancelRequested, page, pageSize)
+	if err == nil {
+		s.encodeOrders(orders)
+	}
+	return orders, total, err
 }
 
 func (s *OrderService) notifyStaffCancelRequest(order *model.Order) {

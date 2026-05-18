@@ -93,12 +93,12 @@ func registerOrderRoutes(api *gin.RouterGroup, orderH *handler.OrderHandler) {
 	{
 		orders.GET("", orderH.List)
 		orders.GET("/cancel-requests", staffOnly, orderH.ListCancelRequests)
-		orders.GET("/:id", orderH.Get)
+		orders.GET("/:code", orderH.Get)
 		orders.POST("", orderH.Create)
-		orders.POST("/:id/cancel", orderH.Cancel)
-		orders.POST("/:id/confirm", staffOnly, orderH.Confirm)
-		orders.PUT("/:id", staffOnly, orderH.Update)
-		orders.DELETE("/:id", staffOnly, orderH.Delete)
+		orders.POST("/:code/cancel", orderH.Cancel)
+		orders.POST("/:code/confirm", staffOnly, orderH.Confirm)
+		orders.PUT("/:code", staffOnly, orderH.Update)
+		orders.DELETE("/:code", staffOnly, orderH.Delete)
 	}
 }
 

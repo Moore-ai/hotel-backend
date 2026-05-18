@@ -3,6 +3,7 @@ package service
 import (
 	"hotel-backend/config"
 	"hotel-backend/internal/repository"
+	"hotel-backend/pkg/obfuscate"
 )
 
 type Services struct {
@@ -25,6 +26,7 @@ func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *H
 	strategy := NewStrategyFromConfig(allocationCfg.Strategy)
 	allocator := NewRoomAllocator(repos.Room, repos.Order, strategy)
 	notifSvc := NewNotificationService(repos.Notif, hub)
+	obfKey := obfuscate.NewKey(jwtCfg.Secret)
 	return &Services{
 		Auth:     NewAuthService(repos.User, repos.Guest, repos.Employee, repos.Admin, user, jwtCfg),
 		User:     user,
@@ -32,7 +34,7 @@ func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *H
 		Employee: NewEmployeeService(repos.Employee, audit),
 		Admin:    NewAdminService(repos.Admin, audit),
 		Room:     NewRoomService(repos.Room, audit),
-		Order:    NewOrderService(repos.Order, repos.Room, repos.User, allocator, audit, notifSvc, db, cancellationCfg.CutoffHours),
+		Order:    NewOrderService(repos.Order, repos.Room, repos.User, allocator, audit, notifSvc, db, cancellationCfg.CutoffHours, obfKey),
 		Checkin:  NewCheckinService(repos.Checkin, repos.Room, repos.Order, allocator, audit, db),
 		Notif:    notifSvc,
 		Audit:    audit,
