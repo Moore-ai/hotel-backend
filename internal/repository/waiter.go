@@ -68,9 +68,10 @@ func (r *WaiterRepo) FindIdle() ([]model.Waiter, error) {
 	return waiters, err
 }
 
-func (r *WaiterRepo) FindIdleWithLock(tx *gorm.DB) ([]model.Waiter, error) {
-	var waiters []model.Waiter
+func (r *WaiterRepo) FindOneIdleWithLock(tx *gorm.DB) (*model.Waiter, error) {
+	var waiter model.Waiter
 	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-		Preload("User").Where("serving_room_id IS NULL").Find(&waiters).Error
-	return waiters, err
+		Preload("User").Where("serving_room_id IS NULL").
+		Order("RANDOM()").First(&waiter).Error
+	return &waiter, err
 }

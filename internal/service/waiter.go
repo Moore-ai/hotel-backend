@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"log"
-	"math/rand"
 
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
@@ -59,26 +58,21 @@ func (s *WaiterService) Update(id uint, name, phone, email string) (*model.Waite
 
 func (s *WaiterService) Dispatch(roomID uint, guestUserID uint, serviceType, note string) (*model.Waiter, error) {
 	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	defer tx.Rollback()
 
-	idle, err := s.repo.FindIdleWithLock(tx)
+	chosen, err := s.repo.FindOneIdleWithLock(tx)
 	if err != nil {
-		tx.Rollback()
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNoWaiterAvailable
+		}
 		return nil, err
 	}
-	if len(idle) == 0 {
-		tx.Rollback()
-		return nil, ErrNoWaiterAvailable
-	}
 
-	chosen := &idle[rand.Intn(len(idle))]
 	chosen.ServingRoomID = &roomID
 	if err := s.repo.WithTx(tx).Update(chosen); err != nil {
-		tx.Rollback()
 		return nil, err
 	}
 
@@ -115,6 +109,9 @@ func (s *WaiterService) Dispatch(roomID uint, guestUserID uint, serviceType, not
 	waiterContent := serviceType
 	if note != "" {
 		waiterContent += "（" + note + "）"
+	}
+	if waiterContent == "" {
+		waiterContent = "新服务任务"
 	}
 	if _, err := s.notifSvc.Create(chosen.UserID, "waiter_task", "新服务任务", waiterContent); err != nil {
 		log.Printf("Notification failed for waiter %d: %v", chosen.UserID, err)
