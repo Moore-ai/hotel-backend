@@ -15,6 +15,7 @@ var ErrOrderNotFoundInCancel = errors.New("order not found")
 var ErrOrderNotBelongToUser = errors.New("order does not belong to the user")
 var ErrOrderNotPending = errors.New("order is not in pending status")
 var ErrRoomStatusConflict = errors.New("room status conflict during cancellation")
+var ErrPastCheckIn = errors.New("cannot cancel an order past check-in date")
 
 type OrderService struct {
 	repo        *repository.OrderRepo
@@ -202,12 +203,14 @@ func (s *OrderService) Cancel(id, userID uint, reason string) (*model.Order, boo
 		return nil, false, err
 	}
 
-	hoursUntilCheckIn := time.Until(checkInTime).Hours()
-
-	if hoursUntilCheckIn <= 0 {
-		return nil, false, errors.New("cannot cancel an order on or past check-in date")
+	// 日期层面的检查：入住日期在今日之前 → 拒绝取消
+	today := time.Now().Truncate(24 * time.Hour)
+	if checkInTime.Before(today) {
+		return nil, false, ErrPastCheckIn
 	}
 
+	// 时间层面的检查：距入住的实际小时数决定自动取消还是审核
+	hoursUntilCheckIn := time.Until(checkInTime).Hours()
 	autoCancel := hoursUntilCheckIn > float64(s.cutoffHours)
 
 	if autoCancel {

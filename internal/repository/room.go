@@ -64,7 +64,7 @@ type RoomFilter struct {
 
 func (r *RoomRepo) FindCandidates(filter RoomFilter) ([]model.Room, error) {
 	var rooms []model.Room
-	query := r.db.Model(&model.Room{})
+	query := r.db.Model(&model.Room{}).Where("status = ?", model.RoomStatusVacant)
 
 	if filter.MinCapacity > 0 {
 		query = query.Where("capacity >= ?", filter.MinCapacity)

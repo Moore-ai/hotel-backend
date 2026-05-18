@@ -129,6 +129,10 @@ func (h *OrderHandler) Cancel(c *gin.Context) {
 			dto.Error(c, errcode.ErrForbidden)
 			return
 		}
+		if errors.Is(err, service.ErrPastCheckIn) {
+			dto.Error(c, errcode.ErrBadRequest)
+			return
+		}
 		dto.Error(c, errcode.ErrInternal)
 		return
 	}
