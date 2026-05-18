@@ -4,6 +4,7 @@ import (
 	"hotel-backend/internal/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type OrderRepo struct {
@@ -21,6 +22,16 @@ func (r *OrderRepo) Create(order *model.Order) error {
 func (r *OrderRepo) FindByID(id uint) (*model.Order, error) {
 	var order model.Order
 	err := r.db.Preload("User").Preload("Room").First(&order, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &order, nil
+}
+
+func (r *OrderRepo) FindByIDForUpdate(tx *gorm.DB, id uint) (*model.Order, error) {
+	var order model.Order
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Preload("User").Preload("Room").First(&order, id).Error
 	if err != nil {
 		return nil, err
 	}

@@ -255,7 +255,7 @@ func (s *OrderService) Cancel(id, userID uint, reason string) (*model.Order, boo
 	orderRepo := s.repo.WithTx(tx)
 	roomRepo := s.roomRepo.WithTx(tx)
 
-	order, err := orderRepo.FindByID(id)
+	order, err := orderRepo.FindByIDForUpdate(tx, id)
 	if err != nil {
 		return nil, false, ErrOrderNotFoundInCancel
 	}
@@ -345,12 +345,41 @@ func (s *OrderService) notifyStaffCancelRequest(order *model.Order) {
 }
 
 func (s *OrderService) Delete(id uint) error {
-	order, err := s.repo.FindByID(id)
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+	defer tx.Rollback()
+
+	orderRepo := s.repo.WithTx(tx)
+	roomRepo := s.roomRepo.WithTx(tx)
+
+	order, err := orderRepo.FindByIDForUpdate(tx, id)
 	if err != nil {
 		return err
 	}
+
+	// 非已取消状态需要释放房间
+	if order.Status != model.OrderStatusCancelled {
+		ok, err := roomRepo.UpdateStatusIf(order.RoomID, model.RoomStatusReserved, model.RoomStatusVacant)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return ErrRoomStatusConflict
+		}
+	}
+
+	if err := orderRepo.Delete(id); err != nil {
+		return err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
 	if err := s.auditLog.Log(0, "deleted", "order", id, order, nil, "删除订单"); err != nil {
 		log.Printf("Audit log failed for order %d: %v", id, err)
 	}
-	return s.repo.Delete(id)
+	return nil
 }
