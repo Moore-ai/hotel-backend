@@ -31,3 +31,6 @@ admin:
 
 allocation:
   strategy: "low_floor" # low_floor, high_floor
+
+cancellation:
+  cutoff_hours: 24  # CANCELLATION_CUTOFF_HOURS

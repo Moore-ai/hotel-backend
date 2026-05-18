@@ -95,6 +95,56 @@ func (h *OrderHandler) Update(c *gin.Context) {
 	dto.Success(c, order)
 }
 
+func (h *OrderHandler) ListCancelRequests(c *gin.Context) {
+	p := dto.ParsePagination(c.Query("page"), c.Query("page_size"))
+	orders, total, err := h.orderService.FindCancelRequests(p.Page, p.PageSize)
+	if err != nil {
+		dto.Error(c, errcode.ErrInternal)
+		return
+	}
+	dto.Success(c, dto.PageData{List: orders, Total: total, Page: p.Page, PageSize: p.PageSize})
+}
+
+func (h *OrderHandler) Cancel(c *gin.Context) {
+	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	userID := c.GetUint("user_id")
+
+	var req dto.CancelOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		dto.Error(c, errcode.ErrBadRequest)
+		return
+	}
+
+	order, autoCancelled, err := h.orderService.Cancel(uint(id), userID, req.Reason)
+	if err != nil {
+		if errors.Is(err, service.ErrOrderNotFoundInCancel) {
+			dto.Error(c, errcode.ErrOrderNotFound)
+			return
+		}
+		if errors.Is(err, service.ErrOrderNotPending) {
+			dto.Error(c, errcode.ErrOrderNotPending)
+			return
+		}
+		if errors.Is(err, service.ErrOrderNotBelongToUser) {
+			dto.Error(c, errcode.ErrForbidden)
+			return
+		}
+		if errors.Is(err, service.ErrPastCheckIn) {
+			dto.Error(c, errcode.ErrBadRequest)
+			return
+		}
+		dto.Error(c, errcode.ErrInternal)
+		return
+	}
+
+	dto.Success(c, gin.H{
+		"id":             order.ID,
+		"status":         order.Status,
+		"auto_cancelled": autoCancelled,
+		"cancel_reason":  order.CancelReason,
+	})
+}
+
 func (h *OrderHandler) Delete(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err := h.orderService.Delete(uint(id)); err != nil {

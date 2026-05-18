@@ -9,12 +9,6 @@ const (
 )
 
 const (
-	OrderStatusPending   = "pending"
-	OrderStatusConfirmed = "confirmed"
-	OrderStatusCancelled = "cancelled"
-)
-
-const (
 	CheckinStatusActive     = "active"
 	CheckinStatusCompleted  = "completed"
 )

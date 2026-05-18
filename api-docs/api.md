@@ -581,7 +581,106 @@ Authorization: Bearer <token>
 |------|------|
 | `status` | pending / confirmed / cancelled |
 
-### 6.5 删除订单（员工/管理员）
+### 6.5 取消订单
+
+住户取消自己的 `pending` 状态订单。根据距入住时间的长度决定自动取消或提交审核。
+
+```
+POST /orders/:id/cancel
+Authorization: Bearer <token>
+```
+
+**请求体**：
+
+```json
+{
+  "reason": "行程变更，无法入住"
+}
+```
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `reason` | ✅ | 取消理由，最少 2 个字符 |
+
+**自动取消响应**（距入住 > `cutoff_hours`）：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "id": 1,
+    "status": "cancelled",
+    "auto_cancelled": true,
+    "cancel_reason": "行程变更，无法入住"
+  }
+}
+```
+
+**提交审核响应**（距入住 ≤ `cutoff_hours`）：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "id": 1,
+    "status": "cancel_requested",
+    "auto_cancelled": false,
+    "cancel_reason": "行程变更，无法入住"
+  }
+}
+```
+
+**错误码**：
+
+| code | 说明 |
+|------|------|
+| 400 | 入住日期已过，无法取消 |
+| 403 | 非本人订单 |
+| 4002 | 订单状态不是 `pending`，无法取消 |
+
+### 6.6 获取待审取消请求（员工/管理员）
+
+```
+GET /orders/cancel-requests?page=1&page_size=20
+Authorization: Bearer <token>
+```
+
+返回所有 `cancel_requested` 状态的订单。
+
+### 6.7 更新订单（用于审批取消请求）
+
+当订单状态为 `cancel_requested` 时，员工可通过此接口审批：
+
+```
+PUT /orders/:id
+Authorization: Bearer <token>
+```
+
+**通过取消申请**：
+
+```json
+{
+  "status": "cancelled"
+}
+```
+
+房间释放为 `vacant`，客户收到 `cancel_approved` 通知。
+
+**驳回取消申请**：
+
+```json
+{
+  "status": "pending"
+}
+```
+
+房间保持 `reserved`，客户收到 `cancel_rejected` 通知。
+
+| 字段 | 说明 |
+|------|------|
+| `status` | `cancelled` 通过 / `pending` 驳回 |
+
+### 6.8 删除订单（员工/管理员）
 
 ```
 DELETE /orders/:id
