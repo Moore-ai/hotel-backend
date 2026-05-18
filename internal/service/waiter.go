@@ -56,7 +56,7 @@ func (s *WaiterService) Update(id uint, name, phone, email string) (*model.Waite
 	return waiter, nil
 }
 
-func (s *WaiterService) Dispatch(roomID uint, guestUserID uint, serviceType, note string) (*model.Waiter, error) {
+func (s *WaiterService) Dispatch(roomID uint, guestUserID uint, content, note string) (*model.Waiter, error) {
 	tx := s.db.Begin()
 	if tx.Error != nil {
 		return nil, tx.Error
@@ -81,34 +81,34 @@ func (s *WaiterService) Dispatch(roomID uint, guestUserID uint, serviceType, not
 	}
 
 	// 通知客户
-	content := ""
+	guestContent := ""
 	if chosen.Name != "" {
-		content = chosen.Name
+		guestContent = chosen.Name
 	} else if chosen.User != nil {
-		content = chosen.User.Username
+		guestContent = chosen.User.Username
 	} else {
-		content = "服务员"
+		guestContent = "服务员"
 	}
 	if chosen.Phone != "" {
-		content += "（电话：" + chosen.Phone + "）"
+		guestContent += "（电话：" + chosen.Phone + "）"
 	}
-	content += "正在前往您的房间"
-	if serviceType != "" {
-		content += "处理「" + serviceType + "」"
+	guestContent += "正在前往您的房间"
+	if content != "" {
+		guestContent += "处理「" + content + "」"
 	}
 	if note != "" {
-		content += "（备注：" + note + "）"
+		guestContent += "（备注：" + note + "）"
 	}
-	content += "，请稍候。"
+	guestContent += "，请稍候。"
 
-	if _, err := s.notifSvc.Create(guestUserID, "waiter_assigned", "服务员已派单", content); err != nil {
+	if _, err := s.notifSvc.Create(guestUserID, "waiter_assigned", "服务员已派单", guestContent); err != nil {
 		log.Printf("Notification failed for user %d: %v", guestUserID, err)
 	}
 
 	// 通知服务员
-	waiterContent := serviceType
+	waiterContent := content
 	if note != "" {
-		waiterContent += "（" + note + "）"
+		waiterContent += "（备注：" + note + "）"
 	}
 	if waiterContent == "" {
 		waiterContent = "新服务任务"

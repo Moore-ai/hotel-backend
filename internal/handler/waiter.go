@@ -112,7 +112,7 @@ func (h *WaiterHandler) ServiceRequest(c *gin.Context) {
 		return
 	}
 
-	waiter, err := h.waiterService.Dispatch(checkin.RoomID, checkin.UserID, req.ServiceType, req.Note)
+	waiter, err := h.waiterService.Dispatch(checkin.RoomID, checkin.UserID, req.Content, req.Note)
 	if err != nil {
 		if errors.Is(err, service.ErrNoWaiterAvailable) {
 			h.waiterService.NotifyWaiting(checkin.UserID)

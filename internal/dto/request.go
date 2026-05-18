@@ -139,8 +139,8 @@ type UpdateWaiterRequest struct {
 }
 
 type ServiceRequest struct {
-	ServiceType string `json:"service_type" binding:"required"`
-	Note        string `json:"note"`
+	Content string `json:"content" binding:"required"`
+	Note    string `json:"note"`
 }
 
 type CreateCheckinRequest struct {
