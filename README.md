@@ -141,6 +141,9 @@ checkout:
 allocation:
   strategy: "low_floor"     # low_floor 或 high_floor
 
+cancellation:
+  cutoff_hours: 24          # CANCELLATION_CUTOFF_HOURS (小时)
+
 admin:
   username: "admin"         # ADMIN_USERNAME
   password: "admin123"      # ADMIN_PASSWORD
@@ -227,7 +230,9 @@ go run main.go
 | GET | `/api/v1/orders` | 全部 | 获取订单（住户仅能看到自己的） |
 | GET | `/api/v1/orders/:id` | 全部 | 获取订单详情 |
 | POST | `/api/v1/orders` | 全部 | 创建订单（支持自动分配房间） |
-| PUT | `/api/v1/orders/:id` | employee/admin | 更新订单 |
+| POST | `/api/v1/orders/:id/cancel` | 全部 | 取消订单（住户取消自己的 pending 订单） |
+| GET | `/api/v1/orders/cancel-requests` | employee/admin | 获取待审核的取消请求 |
+| PUT | `/api/v1/orders/:id` | employee/admin | 更新订单（含审批取消请求） |
 | DELETE | `/api/v1/orders/:id` | employee/admin | 删除订单 |
 
 ### 入住管理（员工/管理员）
@@ -257,11 +262,25 @@ go run main.go
 
 ### 房间自动分配
 
-创建订单时可选择指定房间或让系统自动分配：默认采用**低楼层优先**策略分配房间，可在 `config.yaml` 中配置：
+创建订单时可选择指定房间或让系统自动分配，默认采用**低楼层优先**策略：
 
 ```yaml
 allocation:
-  strategy: "low_floor"  # low_floor（默认）或 high_floor
+  strategy: "low_floor"     # low_floor（默认）或 high_floor
+```
+
+### 订单取消
+
+住户可取消自己的 `pending` 订单，需填写取消理由：
+
+- **距入住 > `cutoff_hours`**：自动取消，房间释放为 `vacant`
+- **距入住 ≤ `cutoff_hours`**：进入 `cancel_requested` 待审核，通知全体员工
+- **入住日期已过**：拒绝取消
+- 员工通过 `PUT /orders/:id` 审批（`cancelled` 通过，`pending` 驳回），结果 WebSocket 通知客户
+
+```yaml
+cancellation:
+  cutoff_hours: 24          # CANCELLATION_CUTOFF_HOURS
 ```
 
 ## 认证方式
