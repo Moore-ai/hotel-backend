@@ -19,6 +19,7 @@ var ErrRoomStatusConflict = errors.New("room status conflict during cancellation
 type OrderService struct {
 	repo        *repository.OrderRepo
 	roomRepo    *repository.RoomRepo
+	userRepo    *repository.UserRepo
 	allocator   *RoomAllocator
 	auditLog    *AuditLogService
 	notifSvc    *NotificationService
@@ -26,8 +27,8 @@ type OrderService struct {
 	cutoffHours int
 }
 
-func NewOrderService(repo *repository.OrderRepo, roomRepo *repository.RoomRepo, allocator *RoomAllocator, auditLog *AuditLogService, notifSvc *NotificationService, db *gorm.DB, cutoffHours int) *OrderService {
-	return &OrderService{repo: repo, roomRepo: roomRepo, allocator: allocator, auditLog: auditLog, notifSvc: notifSvc, db: db, cutoffHours: cutoffHours}
+func NewOrderService(repo *repository.OrderRepo, roomRepo *repository.RoomRepo, userRepo *repository.UserRepo, allocator *RoomAllocator, auditLog *AuditLogService, notifSvc *NotificationService, db *gorm.DB, cutoffHours int) *OrderService {
+	return &OrderService{repo: repo, roomRepo: roomRepo, userRepo: userRepo, allocator: allocator, auditLog: auditLog, notifSvc: notifSvc, db: db, cutoffHours: cutoffHours}
 }
 
 func (s *OrderService) Create(userID uint, roomID *uint, checkIn, checkOut string, price float64, guestCount int, roomType string) (*model.Order, error) {
@@ -239,9 +240,30 @@ func (s *OrderService) Cancel(id, userID uint, reason string) (*model.Order, boo
 			fmt.Sprintf("您的订单 #%d 已自动取消。原因：%s", order.ID, reason)); err != nil {
 			log.Printf("Notification failed for order %d: %v", order.ID, err)
 		}
+	} else {
+		s.notifyStaffCancelRequest(order)
 	}
 
 	return order, autoCancel, nil
+}
+
+func (s *OrderService) FindCancelRequests(page, pageSize int) ([]model.Order, int64, error) {
+	return s.repo.FindByStatus(model.OrderStatusCancelRequested, page, pageSize)
+}
+
+func (s *OrderService) notifyStaffCancelRequest(order *model.Order) {
+	users, _ := s.userRepo.FindByRoles("employee", "admin")
+	title := "取消订单审核"
+	username := ""
+	if order.User != nil {
+		username = order.User.Username
+	}
+	content := fmt.Sprintf("用户 %s 的订单 #%d 已提交取消申请（理由：%s），请审核。", username, order.ID, order.CancelReason)
+	for _, u := range users {
+		if _, err := s.notifSvc.Create(u.ID, "cancel_request_alert", title, content); err != nil {
+			log.Printf("Notification failed for user %d: %v", u.ID, err)
+		}
+	}
 }
 
 func (s *OrderService) Delete(id uint) error {
