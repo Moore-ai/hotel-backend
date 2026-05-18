@@ -43,7 +43,7 @@ func (h *AuthHandler) StaffLogin(c *gin.Context) {
 		dto.Error(c, errcode.ErrBadRequest)
 		return
 	}
-	accessToken, refreshToken, expiresIn, user, name, err := h.authService.Login(req.Username, req.Password, "employee", "admin")
+	accessToken, refreshToken, expiresIn, user, name, err := h.authService.Login(req.Username, req.Password, "waiter", "employee", "admin")
 	if err != nil {
 		dto.Error(c, errcode.ErrInvalidCredentials)
 		return

@@ -23,6 +23,7 @@ func Setup(handlers *handler.Handlers) *gin.Engine {
 	registerGuestRoutes(api, handlers.Guest)
 	registerEmployeeRoutes(api, handlers.Employee)
 	registerAdminRoutes(api, handlers.Admin)
+	registerWaiterRoutes(api, handlers.Waiter)
 	registerRoomRoutes(api, handlers.Room)
 	registerOrderRoutes(api, handlers.Order)
 	registerCheckinRoutes(api, handlers.Checkin)
@@ -100,6 +101,20 @@ func registerOrderRoutes(api *gin.RouterGroup, orderH *handler.OrderHandler) {
 		orders.PUT("/:code", staffOnly, orderH.Update)
 		orders.DELETE("/:code", staffOnly, orderH.Delete)
 	}
+}
+
+func registerWaiterRoutes(api *gin.RouterGroup, waiterH *handler.WaiterHandler) {
+	waiters := api.Group("/waiters", adminOnly)
+	{
+		waiters.GET("", waiterH.List)
+		waiters.GET("/:id", waiterH.Get)
+		waiters.POST("", waiterH.Create)
+		waiters.PUT("/:id", waiterH.Update)
+		waiters.DELETE("/:id", waiterH.Delete)
+	}
+
+	api.POST("/checkins/:id/service-request", waiterH.ServiceRequest)
+	api.POST("/waiters/:id/complete-service", middleware.RequireRoles("waiter", "admin"), waiterH.CompleteService)
 }
 
 func registerCheckinRoutes(api *gin.RouterGroup, checkinH *handler.CheckinHandler) {
