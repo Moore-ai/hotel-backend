@@ -65,6 +65,7 @@ Authorization: Bearer <access_token>
 | 3001 | 房间不存在 |
 | 3002 | 房间已被占用 |
 | 3003 | 无可用房间 |
+| 3004 | 暂无空闲服务员 |
 | 4001 | 订单不存在 |
 | 5001 | 入住记录不存在 |
 | 5002 | 已签离 |
@@ -109,7 +110,7 @@ POST /auth/login
 
 ### 1.2 员工/管理员登录
 
-登录成功后返回 JWT Token，仅限 `employee` 或 `admin` 角色。
+登录成功后返回 JWT Token，仅限 `employee`、`admin` 或 `waiter` 角色。
 
 ```
 POST /auth/staff-login
@@ -421,7 +422,169 @@ Authorization: Bearer <token>
 
 ---
 
-## 五、房间管理
+## 五、服务员管理（仅管理员）
+
+所有 `/waiters` 接口仅限 `admin` 角色访问。
+
+### 5.1 获取服务员列表
+
+```
+GET /waiters?page=1&page_size=20
+Authorization: Bearer <token>
+```
+
+**响应**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "user_id": 10,
+        "user": {
+          "id": 10,
+          "username": "waiter01",
+          "role": "waiter",
+          "created_at": "2026-05-01T00:00:00Z"
+        },
+        "name": "服务员A",
+        "phone": "13800138000",
+        "email": "waiter@example.com",
+        "serving_room_id": null,
+        "created_at": "2026-05-01T00:00:00Z",
+        "updated_at": "2026-05-01T00:00:00Z"
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "pageSize": 20
+  }
+}
+```
+
+### 5.2 获取单个服务员
+
+```
+GET /waiters/:id
+Authorization: Bearer <token>
+```
+
+### 5.3 创建服务员
+
+```
+POST /waiters
+Authorization: Bearer <token>
+```
+
+**请求体**：
+
+```json
+{
+  "username": "waiter_new",
+  "password": "123456",
+  "name": "新服务员",
+  "phone": "13800138000",
+  "email": "waiter@example.com"
+}
+```
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `username` | ✅ | 3~64 字符 |
+| `password` | ✅ | 最少 6 位 |
+| `name` | — | 姓名 |
+| `phone` | — | 手机号 |
+| `email` | — | 邮箱 |
+
+### 5.4 更新服务员
+
+```
+PUT /waiters/:id
+Authorization: Bearer <token>
+```
+
+**请求体**（所有字段可选）：
+
+```json
+{
+  "name": "更新后姓名",
+  "phone": "13900139000",
+  "email": "new@example.com"
+}
+```
+
+### 5.5 删除服务员
+
+```
+DELETE /waiters/:id
+Authorization: Bearer <token>
+```
+
+### 5.6 完成服务
+
+服务员将自身状态恢复为空闲（`serving_room_id` 置空）。
+
+- `waiter` 角色只能完成自己的服务
+- `admin` 可完成任意服务员的服务
+
+```
+POST /waiters/:id/complete-service
+Authorization: Bearer <token>
+```
+
+### 5.7 发起服务请求
+
+已入住客户可通过入住记录 ID 发起服务请求，系统随机分配一名空闲服务员。
+
+```
+POST /checkins/:id/service-request
+Authorization: Bearer <token>
+```
+
+**请求体**：
+
+```json
+{
+  "content": "送水",
+  "note": "请多带几瓶"
+}
+```
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `content` | ✅ | 服务内容 |
+| `note` | — | 备注 |
+
+**成功响应**（分配成功）：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "id": 1,
+    "user_id": 10,
+    "name": "服务员A",
+    "phone": "13800138000",
+    "serving_room_id": 5,
+    "created_at": "2026-05-01T00:00:00Z",
+    "updated_at": "2026-05-01T00:00:00Z"
+  }
+}
+```
+
+**错误码**：
+
+| code | 说明 |
+|------|------|
+| 400 | 入住记录不存在或状态非 active |
+| 403 | 非本人入住记录（guest 角色） |
+| 3004 | 暂无空闲服务员 |
+
+---
+
+## 六、房间管理
 
 ### 5.1 获取房间列表
 
@@ -498,9 +661,9 @@ Authorization: Bearer <token>
 
 ---
 
-## 六、订单管理
+## 七、订单管理
 
-### 6.1 获取订单列表
+### 11.1 获取订单列表
 
 ```
 GET /orders?page=1&page_size=20
@@ -511,7 +674,7 @@ Authorization: Bearer <token>
 - `guest`：仅返回当前用户自己的订单
 - `employee` / `admin`：返回全部订单
 
-### 6.2 获取单个订单
+### 9.2 获取单个订单
 
 ```
 GET /orders/:id
@@ -520,7 +683,7 @@ Authorization: Bearer <token>
 
 **角色差异**：`guest` 只能查看自己的订单，无权访问他人订单（返回 403）。
 
-### 6.3 创建订单
+### 9.3 创建订单
 
 ```
 POST /orders
@@ -559,7 +722,7 @@ Authorization: Bearer <token>
 | `check_out_date` | ✅ | 退房日期 `yyyy-MM-dd` |
 | `total_price` | — | 总价 |
 
-### 6.4 更新订单（员工/管理员）
+### 9.4 更新订单（员工/管理员）
 
 ```
 PUT /orders/:id
@@ -581,7 +744,7 @@ Authorization: Bearer <token>
 |------|------|
 | `status` | pending / confirmed / cancelled |
 
-### 6.5 取消订单
+### 9.5 取消订单
 
 住户取消自己的 `pending` 状态订单。根据距入住时间的长度决定自动取消或提交审核。
 
@@ -638,7 +801,7 @@ Authorization: Bearer <token>
 | 403 | 非本人订单 |
 | 4002 | 订单状态不是 `pending`，无法取消 |
 
-### 6.6 获取待审取消请求（员工/管理员）
+### 9.6 获取待审取消请求（员工/管理员）
 
 ```
 GET /orders/cancel-requests?page=1&page_size=20
@@ -647,7 +810,7 @@ Authorization: Bearer <token>
 
 返回所有 `cancel_requested` 状态的订单。
 
-### 6.7 更新订单（用于审批取消请求）
+### 9.7 更新订单（用于审批取消请求）
 
 当订单状态为 `cancel_requested` 时，员工可通过此接口审批：
 
@@ -680,7 +843,7 @@ Authorization: Bearer <token>
 |------|------|
 | `status` | `cancelled` 通过 / `pending` 驳回 |
 
-### 6.8 删除订单（员工/管理员）
+### 9.8 删除订单（员工/管理员）
 
 ```
 DELETE /orders/:id
@@ -689,25 +852,25 @@ Authorization: Bearer <token>
 
 ---
 
-## 七、入住管理（员工/管理员）
+## 八、入住管理（员工/管理员）
 
 所有 `/checkins` 接口仅限 `employee` 或 `admin` 角色访问。
 
-### 7.1 获取入住记录列表
+### 11.1 获取入住记录列表
 
 ```
 GET /checkins?page=1&page_size=20
 Authorization: Bearer <token>
 ```
 
-### 7.2 获取单个入住记录
+### 9.2 获取单个入住记录
 
 ```
 GET /checkins/:id
 Authorization: Bearer <token>
 ```
 
-### 7.3 办理入住
+### 9.3 办理入住
 
 ```
 POST /checkins
@@ -750,7 +913,7 @@ Authorization: Bearer <token>
 | `room_id` | — | 指定房间 ID |
 | `expected_checkout_time` | ✅ | 预计退房时间（RFC3339 格式） |
 
-### 7.4 办理退房
+### 9.4 办理退房
 
 将入住状态更新为已完成，同时将房间状态恢复为空闲。
 
@@ -768,7 +931,7 @@ Authorization: Bearer <token>
 }
 ```
 
-### 7.5 删除入住记录
+### 9.5 删除入住记录
 
 ```
 DELETE /checkins/:id
@@ -777,9 +940,9 @@ Authorization: Bearer <token>
 
 ---
 
-## 八、通知
+## 九、通知
 
-### 8.1 获取通知列表
+### 11.1 获取通知列表
 
 ```
 GET /notifications?page=1&page_size=20
@@ -788,7 +951,7 @@ Authorization: Bearer <token>
 
 仅返回当前用户自己的通知。
 
-### 8.2 获取未读通知数量
+### 9.2 获取未读通知数量
 
 ```
 GET /notifications/unread
@@ -806,7 +969,7 @@ Authorization: Bearer <token>
 }
 ```
 
-### 8.3 标记通知已读
+### 9.3 标记通知已读
 
 ```
 PUT /notifications/:id/read
@@ -815,9 +978,9 @@ Authorization: Bearer <token>
 
 ---
 
-## 九、审计日志（员工/管理员）
+## 十、审计日志（员工/管理员）
 
-### 9.1 获取审计日志
+### 11.1 获取审计日志
 
 ```
 GET /audit-logs?page=1&page_size=20
@@ -828,9 +991,9 @@ Authorization: Bearer <token>
 
 ---
 
-## 十、WebSocket
+## 十一、WebSocket
 
-### 10.1 建立连接
+### 11.1 建立连接
 
 用于接收实时通知推送。Token 通过 URL 查询参数传递（浏览器 WebSocket API 不支持自定义请求头）：
 
@@ -838,7 +1001,7 @@ Authorization: Bearer <token>
 GET /ws?token=<access_token>
 ```
 
-### 10.2 消息格式
+### 11.2 消息格式
 
 服务端在有新通知时自动推送 JSON 消息，格式与通知模型的响应结构一致：
 
@@ -865,12 +1028,12 @@ GET /ws?token=<access_token>
 | `id` | uint | 通知 ID |
 | `user_id` | uint | 接收者用户 ID |
 | `user` | object | 接收者基本信息 |
-| `type` | string | 通知类型：`overdue_alert` |
+| `type` | string | 通知类型：`overdue_alert` / `waiter_assigned` / `waiter_task` / `waiter_unavailable` / `cancel_approved` / `cancel_rejected` |
 | `title` | string | 通知标题 |
 | `content` | string | 通知正文 |
 | `is_read` | bool | 是否已读 |
 | `created_at` | string | 创建时间 |
 
-### 10.3 心跳保活
+### 11.3 心跳保活
 
 服务端每 30 秒发送 Ping 帧，客户端需在 60 秒内回复 Pong 帧，否则连接断开。客户端无需发送消息，只负责接收推送。

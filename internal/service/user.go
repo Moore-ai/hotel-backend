@@ -15,12 +15,13 @@ type UserService struct {
 	guestRepo    *repository.GuestRepo
 	employeeRepo *repository.EmployeeRepo
 	adminRepo    *repository.AdminRepo
+	waiterRepo   *repository.WaiterRepo
 	auditLog     *AuditLogService
 	db           *gorm.DB
 }
 
-func NewUserService(repo *repository.UserRepo, guestRepo *repository.GuestRepo, employeeRepo *repository.EmployeeRepo, adminRepo *repository.AdminRepo, auditLog *AuditLogService, db *gorm.DB) *UserService {
-	return &UserService{repo: repo, guestRepo: guestRepo, employeeRepo: employeeRepo, adminRepo: adminRepo, auditLog: auditLog, db: db}
+func NewUserService(repo *repository.UserRepo, guestRepo *repository.GuestRepo, employeeRepo *repository.EmployeeRepo, adminRepo *repository.AdminRepo, waiterRepo *repository.WaiterRepo, auditLog *AuditLogService, db *gorm.DB) *UserService {
+	return &UserService{repo: repo, guestRepo: guestRepo, employeeRepo: employeeRepo, adminRepo: adminRepo, waiterRepo: waiterRepo, auditLog: auditLog, db: db}
 }
 
 var ErrUsernameExists = errors.New("username already exists")
@@ -80,6 +81,16 @@ func (s *UserService) Create(username, password, role, name, phone, email string
 	case "admin":
 		adminRepo := s.adminRepo.WithTx(tx)
 		if err := adminRepo.Create(&model.Admin{
+			UserID: user.ID,
+			Name:   name,
+			Phone:  phone,
+			Email:  email,
+		}); err != nil {
+			return nil, err
+		}
+	case "waiter":
+		waiterRepo := s.waiterRepo.WithTx(tx)
+		if err := waiterRepo.Create(&model.Waiter{
 			UserID: user.ID,
 			Name:   name,
 			Phone:  phone,
@@ -178,6 +189,22 @@ func (s *UserService) Update(id uint, username, password, role, name, phone, ema
 					return nil, err
 				}
 			}
+		case "waiter":
+			w, err := s.waiterRepo.FindByUserID(user.ID)
+			if err == nil {
+				if name != "" {
+					w.Name = name
+				}
+				if phone != "" {
+					w.Phone = phone
+				}
+				if email != "" {
+					w.Email = email
+				}
+				if err := s.waiterRepo.Update(w); err != nil {
+					return nil, err
+				}
+			}
 		}
 	}
 
@@ -234,6 +261,12 @@ func (s *UserService) deleteProfile(tx *gorm.DB, role string, userID uint) error
 			return nil
 		}
 		return s.adminRepo.WithTx(tx).Delete(a.ID)
+	case "waiter":
+		w, err := s.waiterRepo.FindByUserID(userID)
+		if err != nil {
+			return nil
+		}
+		return s.waiterRepo.WithTx(tx).Delete(w.ID)
 	}
 	return nil
 }

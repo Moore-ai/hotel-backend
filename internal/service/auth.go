@@ -15,16 +15,18 @@ type AuthService struct {
 	guestRepo    *repository.GuestRepo
 	employeeRepo *repository.EmployeeRepo
 	adminRepo    *repository.AdminRepo
+	waiterRepo   *repository.WaiterRepo
 	userService  *UserService
 	jwtCfg       config.JWTConfig
 }
 
-func NewAuthService(userRepo *repository.UserRepo, guestRepo *repository.GuestRepo, employeeRepo *repository.EmployeeRepo, adminRepo *repository.AdminRepo, userService *UserService, jwtCfg config.JWTConfig) *AuthService {
+func NewAuthService(userRepo *repository.UserRepo, guestRepo *repository.GuestRepo, employeeRepo *repository.EmployeeRepo, adminRepo *repository.AdminRepo, waiterRepo *repository.WaiterRepo, userService *UserService, jwtCfg config.JWTConfig) *AuthService {
 	return &AuthService{
 		userRepo:     userRepo,
 		guestRepo:    guestRepo,
 		employeeRepo: employeeRepo,
 		adminRepo:    adminRepo,
+		waiterRepo:   waiterRepo,
 		userService:  userService,
 		jwtCfg:       jwtCfg,
 	}
@@ -85,6 +87,11 @@ func (s *AuthService) lookupProfileName(userID uint, role string) string {
 		a, err := s.adminRepo.FindByUserID(userID)
 		if err == nil {
 			return a.Name
+		}
+	case "waiter":
+		w, err := s.waiterRepo.FindByUserID(userID)
+		if err == nil {
+			return w.Name
 		}
 	}
 	return ""

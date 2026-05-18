@@ -11,6 +11,7 @@ type Handlers struct {
 	Guest    *GuestHandler
 	Employee *EmployeeHandler
 	Admin    *AdminHandler
+	Waiter   *WaiterHandler
 	Room     *RoomHandler
 	Order    *OrderHandler
 	Checkin  *CheckinHandler
@@ -25,6 +26,7 @@ func NewHandlers(services *service.Services, repos *repository.Repositories, hub
 		Guest:    NewGuestHandler(services.Guest, services.User),
 		Employee: NewEmployeeHandler(services.Employee, services.User),
 		Admin:    NewAdminHandler(services.Admin, services.User),
+		Waiter:   NewWaiterHandler(services.Waiter, services.Checkin, services.User),
 		Room:     NewRoomHandler(services.Room),
 		Order:    NewOrderHandler(services.Order),
 		Checkin:  NewCheckinHandler(services.Checkin),

@@ -11,6 +11,7 @@ func AutoMigrate() error {
 		&model.Guest{},
 		&model.Employee{},
 		&model.Admin{},
+		&model.Waiter{},
 		&model.Room{},
 		&model.Order{},
 		&model.Checkin{},

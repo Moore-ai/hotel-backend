@@ -124,6 +124,25 @@ type CancelOrderRequest struct {
 	Reason string `json:"reason" binding:"required,min=2"`
 }
 
+type CreateWaiterRequest struct {
+	Username string `json:"username" binding:"required,min=3,max=64"`
+	Password string `json:"password" binding:"required,min=6"`
+	Name     string `json:"name"`
+	Phone    string `json:"phone"`
+	Email    string `json:"email"`
+}
+
+type UpdateWaiterRequest struct {
+	Name  string `json:"name"`
+	Phone string `json:"phone"`
+	Email string `json:"email"`
+}
+
+type ServiceRequest struct {
+	Content string `json:"content" binding:"required"`
+	Note    string `json:"note"`
+}
+
 type CreateCheckinRequest struct {
 	OrderID              *uint  `json:"order_id"`
 	UserID               uint   `json:"user_id" binding:"required"`
