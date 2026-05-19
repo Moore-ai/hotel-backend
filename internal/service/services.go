@@ -26,8 +26,8 @@ func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *H
 	user := NewUserService(repos.User, repos.Guest, repos.Employee, repos.Admin, repos.Waiter, audit, db)
 	strategy := NewStrategyFromConfig(allocationCfg.Strategy)
 	allocator := NewRoomAllocator(repos.Room, repos.Order, strategy)
-	notifSvc := NewNotificationService(repos.Notif, hub)
 	obfKey := obfuscate.NewKey(jwtCfg.Secret)
+	notifSvc := NewNotificationService(repos.Notif, hub, obfKey)
 	return &Services{
 		Auth:     NewAuthService(repos.User, repos.Guest, repos.Employee, repos.Admin, repos.Waiter, user, jwtCfg),
 		User:     user,
