@@ -942,6 +942,8 @@ Authorization: Bearer <token>
 
 ## 九、通知
 
+通知的 `id` 字段使用 Hashids 加密为字符串格式，所有 API 路径参数中的 `:code` 均为此加密 ID。
+
 ### 11.1 获取通知列表
 
 ```
@@ -972,7 +974,7 @@ Authorization: Bearer <token>
 ### 9.3 标记通知已读
 
 ```
-PUT /notifications/:id/read
+PUT /notifications/:code/read
 Authorization: Bearer <token>
 ```
 
@@ -1007,7 +1009,7 @@ GET /ws?token=<access_token>
 
 ```json
 {
-  "id": 1,
+  "id": "aB3xR7kQ",
   "user_id": 1,
   "user": {
     "id": 1,
@@ -1025,7 +1027,7 @@ GET /ws?token=<access_token>
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `id` | uint | 通知 ID |
+| `id` | string | 通知 ID（Hashids 加密） |
 | `user_id` | uint | 接收者用户 ID |
 | `user` | object | 接收者基本信息 |
 | `type` | string | 通知类型：`overdue_alert` / `waiter_assigned` / `waiter_task` / `waiter_unavailable` / `cancel_approved` / `cancel_rejected` |
