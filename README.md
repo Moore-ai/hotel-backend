@@ -13,12 +13,15 @@
 
 ## 功能特性
 
-- **RBAC 权限控制** — 三种角色：`guest`（住户）、`employee`（员工）、`admin`（管理员）
+- **RBAC 权限控制** — 四种角色：`guest`（住户）、`employee`（员工）、`waiter`（服务员）、`admin`（管理员）
 - **客房管理** — 支持房型、价格、状态等信息的增删改查
 - **房间自动分配** — 根据入住人数、房型偏好自动分配可用房间，支持低楼层优先策略
 - **订单系统** — 住户可下单，员工处理订单确认与取消，支持指定房间或自动分配
+- **订单取消审核** — 临近入住的取消进入审核流程，员工可审批或驳回，住户可申诉
 - **入住 / 退房** — 追踪入住信息及预计退房时间，支持事务保证数据一致性
-- **自动通知** — 后台调度器自动提醒住户和员工处理超时未退房的情况
+- **服务员派单** — 住户发起服务请求，系统随机派单给空闲服务员，实时通知
+- **通知系统** — REST API + WebSocket 实时推送，支持多种通知类型
+- **ID 加密** — 订单和通知 ID 使用 Hashids 加密为混淆字符串，不暴露真实 ID
 - **审计日志** — 所有数据变更均记录不可篡改的日志，包含修改前后的完整快照
 - **统一响应格式** — 标准化的 JSON 响应结构与错误码
 
@@ -38,6 +41,7 @@ hotel-backend/
 │   └── dto/             # 请求/响应结构体
 ├── pkg/                 # 可复用工具（JWT、bcrypt、错误码）
 ├── scripts/             # 集成测试脚本
+├── test/                # 功能测试脚本
 └── main.go
 ```
 
@@ -143,6 +147,16 @@ allocation:
 
 cancellation:
   cutoff_hours: 24          # CANCELLATION_CUTOFF_HOURS (小时)
+  default_reject_reason: "无"
+  notify_strategy: "random_one"  # staff_and_admin | all_staff | random_one
+  notify_staff_ids: []
+
+allocation:
+  strategy: "low_floor"     # low_floor | high_floor
+
+appeal:
+  review_strategy: "admin_only"  # admin_only | random_one
+  review_staff_ids: []
 
 admin:
   username: "admin"         # ADMIN_USERNAME
@@ -213,6 +227,20 @@ go run main.go
 | PUT | `/api/v1/admins/:id` | 更新管理员信息 |
 | DELETE | `/api/v1/admins/:id` | 删除管理员 |
 
+### 服务员管理（仅管理员）
+
+| 方法 | 接口 | 说明 |
+|------|------|------|
+| GET | `/api/v1/waiters` | 获取服务员列表 |
+| GET | `/api/v1/waiters/:id` | 获取服务员详情 |
+| POST | `/api/v1/waiters` | 创建服务员 |
+| PUT | `/api/v1/waiters/:id` | 更新服务员信息 |
+| DELETE | `/api/v1/waiters/:id` | 删除服务员 |
+| POST | `/api/v1/waiters/:id/complete-service` | 服务员完成服务 |
+
+额外路由（无需 admin）：
+| POST | `/api/v1/checkins/:id/service-request` | 认证用户 | 发起服务请求（随机派单） |
+
 ### 房间管理
 
 | 方法 | 接口 | 角色 | 说明 |
@@ -232,6 +260,10 @@ go run main.go
 | POST | `/api/v1/orders` | 全部 | 创建订单（返回加密 code 而非真实 ID） |
 | POST | `/api/v1/orders/:code/cancel` | 全部 | 取消订单（住户凭 code 取消自己的 pending 订单） |
 | GET | `/api/v1/orders/cancel-requests` | employee/admin | 获取待审核的取消请求 |
+| POST | `/api/v1/orders/:code/reject-cancel` | employee/admin | 驳回取消申请 |
+| POST | `/api/v1/orders/:code/appeal` | 全部 | 住户对驳回决定提起申诉 |
+| GET | `/api/v1/appeals` | employee/admin | 查看申诉列表 |
+| POST | `/api/v1/appeals/:id/review` | employee/admin | 审核申诉 |
 | POST | `/api/v1/orders/:code/confirm` | employee/admin | 确认入住（员工凭 code 确认订单） |
 | PUT | `/api/v1/orders/:code` | employee/admin | 更新订单（含审批取消请求） |
 | DELETE | `/api/v1/orders/:code` | employee/admin | 删除订单 |
@@ -252,7 +284,7 @@ go run main.go
 |------|------|------|
 | GET | `/api/v1/notifications` | 获取通知列表 |
 | GET | `/api/v1/notifications/unread` | 获取未读通知数量 |
-| PUT | `/api/v1/notifications/:id/read` | 标记通知已读 |
+| PUT | `/api/v1/notifications/:code/read` | 标记通知已读 |
 
 ### 其他
 
@@ -270,19 +302,32 @@ allocation:
   strategy: "low_floor"     # low_floor（默认）或 high_floor
 ```
 
-### 订单取消
+### 订单取消与申诉
 
 住户可取消自己的 `pending` 订单，需填写取消理由：
 
 - **距入住 > `cutoff_hours`**：自动取消，房间释放为 `vacant`
-- **距入住 ≤ `cutoff_hours`**：进入 `cancel_requested` 待审核，通知全体员工
+- **距入住 ≤ `cutoff_hours`**：进入 `cancel_requested` 待审核，根据策略通知工作人员
 - **入住日期已过**：拒绝取消
-- 员工通过 `PUT /orders/:code` 审批（`cancelled` 通过，`pending` 驳回），结果 WebSocket 通知客户
-- 订单 ID 使用加密 code 替代，前端全程仅接触加密 code，真实 ID 不对外暴露
+- 员工通过 `PUT /orders/:code` 或 `POST /orders/:code/reject-cancel` 审批
+  - 通过（`cancelled`）：房间释放，客户收到 `cancel_approved` 通知
+  - 驳回（`pending`）：客户收到 `cancel_rejected` 通知，并可提起申诉
+- 申诉流程：客户 `POST /orders/:code/appeal` → 员工 `POST /appeals/:id/review`
+  - 通过（`approved`）：订单取消，房间释放
+  - 驳回（`rejected`）：订单保持 `pending`
+- 申诉审核策略可配置（`admin_only` / `random_one`）
+- 订单和通知 ID 使用 Hashids 加密为混淆字符串，不对外暴露真实 ID
 
 ```yaml
 cancellation:
   cutoff_hours: 24          # CANCELLATION_CUTOFF_HOURS
+  default_reject_reason: "无"
+  notify_strategy: "random_one" # staff_and_admin | all_staff | random_one
+  notify_staff_ids: []
+
+appeal:
+  review_strategy: "admin_only"  # admin_only | random_one
+  review_staff_ids: []
 ```
 
 ## 认证方式
