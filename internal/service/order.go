@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"time"
 
 	"hotel-backend/internal/model"
@@ -31,11 +32,13 @@ type OrderService struct {
 	db                  *gorm.DB
 	cutoffHours         int
 	defaultRejectReason string
+	notifyStrategy      string
+	notifyStaffIDs      []uint
 	obfuscateKey        *hashids.HashID
 }
 
-func NewOrderService(repo *repository.OrderRepo, roomRepo *repository.RoomRepo, userRepo *repository.UserRepo, allocator *RoomAllocator, auditLog *AuditLogService, notifSvc *NotificationService, db *gorm.DB, cutoffHours int, obfuscateKey *hashids.HashID, defaultRejectReason string) *OrderService {
-	return &OrderService{repo: repo, roomRepo: roomRepo, userRepo: userRepo, allocator: allocator, auditLog: auditLog, notifSvc: notifSvc, db: db, cutoffHours: cutoffHours, obfuscateKey: obfuscateKey, defaultRejectReason: defaultRejectReason}
+func NewOrderService(repo *repository.OrderRepo, roomRepo *repository.RoomRepo, userRepo *repository.UserRepo, allocator *RoomAllocator, auditLog *AuditLogService, notifSvc *NotificationService, db *gorm.DB, cutoffHours int, obfuscateKey *hashids.HashID, defaultRejectReason string, notifyStrategy string, notifyStaffIDs []uint) *OrderService {
+	return &OrderService{repo: repo, roomRepo: roomRepo, userRepo: userRepo, allocator: allocator, auditLog: auditLog, notifSvc: notifSvc, db: db, cutoffHours: cutoffHours, obfuscateKey: obfuscateKey, defaultRejectReason: defaultRejectReason, notifyStrategy: notifyStrategy, notifyStaffIDs: notifyStaffIDs}
 }
 
 func (s *OrderService) DecodeCode(code string) (uint, error) {
@@ -375,7 +378,35 @@ func (s *OrderService) FindCancelRequests(page, pageSize int) ([]model.Order, in
 }
 
 func (s *OrderService) notifyStaffCancelRequest(order *model.Order) {
-	users, _ := s.userRepo.FindByRoles("employee", "admin")
+	var users []model.User
+	switch s.notifyStrategy {
+	case "random_one":
+		if len(s.notifyStaffIDs) > 0 {
+			id := s.notifyStaffIDs[rand.Intn(len(s.notifyStaffIDs))]
+			u, err := s.userRepo.FindByID(id)
+			if err != nil {
+				log.Printf("notify staff id %d not found, falling back to random employee: %v", id, err)
+			} else {
+				users = append(users, *u)
+			}
+		}
+		if len(users) == 0 {
+			all, _ := s.userRepo.FindByRole("employee")
+			if len(all) > 0 {
+				users = append(users, all[rand.Intn(len(all))])
+			}
+		}
+	case "all_staff":
+		users, _ = s.userRepo.FindByRole("employee")
+	default:
+		users, _ = s.userRepo.FindByRoles("employee", "admin")
+	}
+
+	if len(users) == 0 {
+		log.Printf("no staff available to notify for cancel request of order #%d", order.ID)
+		return
+	}
+
 	title := "取消订单审核"
 	username := ""
 	if order.User != nil {

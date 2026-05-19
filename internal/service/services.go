@@ -36,7 +36,7 @@ func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *H
 		Admin:    NewAdminService(repos.Admin, audit),
 		Waiter:   NewWaiterService(repos.Waiter, notifSvc, audit, db),
 		Room:     NewRoomService(repos.Room, audit),
-		Order:    NewOrderService(repos.Order, repos.Room, repos.User, allocator, audit, notifSvc, db, cancellationCfg.CutoffHours, obfKey, cancellationCfg.DefaultRejectReason),
+		Order:    NewOrderService(repos.Order, repos.Room, repos.User, allocator, audit, notifSvc, db, cancellationCfg.CutoffHours, obfKey, cancellationCfg.DefaultRejectReason, cancellationCfg.NotifyStrategy, cancellationCfg.NotifyStaffIDs),
 		Checkin:  NewCheckinService(repos.Checkin, repos.Room, repos.Order, allocator, audit, db),
 		Notif:    notifSvc,
 		Audit:    audit,

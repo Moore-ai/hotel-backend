@@ -1,9 +1,10 @@
 package router
 
 import (
-	"github.com/gin-gonic/gin"
 	"hotel-backend/internal/handler"
 	"hotel-backend/internal/middleware"
+
+	"github.com/gin-gonic/gin"
 )
 
 var staffOnly = middleware.RequireRoles("employee", "admin")
@@ -57,7 +58,7 @@ func registerGuestRoutes(api *gin.RouterGroup, guestH *handler.GuestHandler) {
 }
 
 func registerEmployeeRoutes(api *gin.RouterGroup, empH *handler.EmployeeHandler) {
-	employees := api.Group("/employees", staffOnly)
+	employees := api.Group("/employees", adminOnly)
 	{
 		employees.GET("", empH.List)
 		employees.GET("/:id", empH.Get)
