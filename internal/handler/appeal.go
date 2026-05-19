@@ -48,7 +48,7 @@ func (h *AppealHandler) Create(c *gin.Context) {
 			return
 		}
 		if errors.Is(err, service.ErrAppealExists) {
-			dto.Error(c, errcode.ErrConflict)
+			dto.Error(c, errcode.ErrAppealExists)
 			return
 		}
 		dto.Error(c, errcode.ErrInternal)
