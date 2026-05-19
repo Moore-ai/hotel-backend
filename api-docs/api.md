@@ -61,12 +61,15 @@ Authorization: Bearer <access_token>
 | 1002 | Token 已过期 |
 | 1003 | Token 无效 |
 | 2001 | 用户不存在 |
-| 2002 | 用户名已存在 |
 | 3001 | 房间不存在 |
 | 3002 | 房间已被占用 |
 | 3003 | 无可用房间 |
 | 3004 | 暂无空闲服务员 |
 | 4001 | 订单不存在 |
+| 4002 | 订单状态不是 pending，无法取消 |
+| 4003 | 申诉不存在 |
+| 4004 | 申诉状态不是 pending |
+| 4005 | 该订单已有进行中的申诉 |
 | 5001 | 入住记录不存在 |
 | 5002 | 已签离 |
 
@@ -993,7 +996,130 @@ Authorization: Bearer <token>
 
 ---
 
-## 十一、WebSocket
+## 十一、申诉（员工/管理员）
+
+驳回客户取消申请后，客户可选择申诉。工作人员审核申诉（通过/驳回），结果通知客户。
+
+申诉的审核策略通过配置文件 `appeal.review_strategy` 指定：
+- `admin_only`（默认）：仅通知超级管理员
+- `random_one`：随机分配给指定工作人员（`appeal.review_staff_ids`），未配置时覆盖全体员工
+
+### 11.1 提交申诉（住户）
+
+```
+POST /orders/:code/appeal
+Authorization: Bearer <token>
+```
+
+**请求体**：
+
+```json
+{
+  "reason": "取消时间仍在合理范围内，请求人工审核"
+}
+```
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `reason` | ✅ | 申诉理由，最少 2 个字符 |
+
+**响应**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "id": 1,
+    "order_id": 1,
+    "user_id": 1,
+    "reason": "取消时间仍在合理范围内，请求人工审核",
+    "status": "pending",
+    "reviewer_id": null,
+    "review_note": null,
+    "created_at": "2026-05-20T00:00:00Z"
+  }
+}
+```
+
+**错误码**：
+
+| code | 说明 |
+|------|------|
+| 400 | 订单不是 pending 状态（ErrOrderNotPending） |
+| 403 | 非本人订单 |
+| 404 | 订单不存在 |
+| 409 | 该订单已有进行中的申诉（ErrAppealExists） |
+
+### 11.2 查看申诉列表
+
+```
+GET /appeals?status=pending&page=1&page_size=20
+Authorization: Bearer <token>
+```
+
+| 参数 | 说明 |
+|------|------|
+| `status` | 筛选状态：pending / approved / rejected，为空返回全部 |
+
+### 11.3 审核申诉
+
+```
+POST /appeals/:id/review
+Authorization: Bearer <token>
+```
+
+**请求体**：
+
+```json
+{
+  "action": "approved",
+  "review_note": "经核实，同意取消"
+}
+```
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `action` | ✅ | `approved`（通过，订单取消）/ `rejected`（驳回） |
+| `review_note` | — | 审核备注 |
+
+**通过响应**（申诉状态变为 approved，订单取消，房间释放）：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "id": 1,
+    "status": "approved",
+    "reviewer_id": 1,
+    "review_note": "经核实，同意取消"
+  }
+}
+```
+
+**驳回响应**（申诉状态变为 rejected，订单保持 pending）：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "id": 1,
+    "status": "rejected",
+    "reviewer_id": 1,
+    "review_note": "取消政策不允许"
+  }
+}
+```
+
+**错误码**：
+
+| code | 说明 |
+|------|------|
+| 400 | action 无效，或申诉不在 pending 状态（ErrAppealNotPending） |
+| 404 | 申诉不存在（ErrAppealNotFound） |
+
+---
+
+## 十二、WebSocket
 
 ### 11.1 建立连接
 
@@ -1030,7 +1156,7 @@ GET /ws?token=<access_token>
 | `id` | string | 通知 ID（Hashids 加密） |
 | `user_id` | uint | 接收者用户 ID |
 | `user` | object | 接收者基本信息 |
-| `type` | string | 通知类型：`overdue_alert` / `waiter_assigned` / `waiter_task` / `waiter_unavailable` / `cancel_approved` / `cancel_rejected` |
+| `type` | string | 通知类型：`overdue_alert` / `waiter_assigned` / `waiter_task` / `waiter_unavailable` / `cancel_approved` / `cancel_rejected` / `appeal_request` / `appeal_approved` / `appeal_rejected` |
 | `title` | string | 通知标题 |
 | `content` | string | 通知正文 |
 | `is_read` | bool | 是否已读 |
