@@ -135,7 +135,7 @@ func registerNotificationRoutes(api *gin.RouterGroup, notifH *handler.Notificati
 	{
 		notifs.GET("", notifH.List)
 		notifs.GET("/unread", notifH.UnreadCount)
-		notifs.PUT("/:id/read", notifH.MarkRead)
+		notifs.PUT("/:code/read", notifH.MarkRead)
 	}
 }
 
