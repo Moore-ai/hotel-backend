@@ -32,7 +32,7 @@ func (s *WaiterService) FindAll(page, pageSize int) ([]model.Waiter, int64, erro
 	return s.repo.FindAll(page, pageSize)
 }
 
-func (s *WaiterService) Update(id uint, name, phone, email string) (*model.Waiter, error) {
+func (s *WaiterService) Update(id uint, name, phone, email, hireDate string, salary float64, notes string) (*model.Waiter, error) {
 	waiter, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, err
@@ -46,6 +46,15 @@ func (s *WaiterService) Update(id uint, name, phone, email string) (*model.Waite
 	}
 	if email != "" {
 		waiter.Email = email
+	}
+	if hireDate != "" {
+		waiter.HireDate = hireDate
+	}
+	if salary > 0 {
+		waiter.Salary = salary
+	}
+	if notes != "" {
+		waiter.Notes = notes
 	}
 	if err := s.repo.Update(waiter); err != nil {
 		return nil, err

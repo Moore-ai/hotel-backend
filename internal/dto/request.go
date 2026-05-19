@@ -57,17 +57,23 @@ type UpdateGuestRequest struct {
 }
 
 type CreateEmployeeRequest struct {
-	Username string `json:"username" binding:"required,min=3,max=64"`
-	Password string `json:"password" binding:"required,min=6"`
-	Name     string `json:"name"`
-	Phone    string `json:"phone"`
-	Email    string `json:"email"`
+	Username string  `json:"username" binding:"required,min=3,max=64"`
+	Password string  `json:"password" binding:"required,min=6"`
+	Name     string  `json:"name"`
+	Phone    string  `json:"phone"`
+	Email    string  `json:"email"`
+	HireDate string  `json:"hire_date"`
+	Salary   float64 `json:"salary"`
+	Notes    string  `json:"notes"`
 }
 
 type UpdateEmployeeRequest struct {
-	Name  string `json:"name"`
-	Phone string `json:"phone"`
-	Email string `json:"email"`
+	Name     string  `json:"name"`
+	Phone    string  `json:"phone"`
+	Email    string  `json:"email"`
+	HireDate string  `json:"hire_date"`
+	Salary   float64 `json:"salary"`
+	Notes    string  `json:"notes"`
 }
 
 type CreateAdminRequest struct {
@@ -129,17 +135,23 @@ type RejectCancelRequest struct {
 }
 
 type CreateWaiterRequest struct {
-	Username string `json:"username" binding:"required,min=3,max=64"`
-	Password string `json:"password" binding:"required,min=6"`
-	Name     string `json:"name"`
-	Phone    string `json:"phone"`
-	Email    string `json:"email"`
+	Username string  `json:"username" binding:"required,min=3,max=64"`
+	Password string  `json:"password" binding:"required,min=6"`
+	Name     string  `json:"name"`
+	Phone    string  `json:"phone"`
+	Email    string  `json:"email"`
+	HireDate string  `json:"hire_date"`
+	Salary   float64 `json:"salary"`
+	Notes    string  `json:"notes"`
 }
 
 type UpdateWaiterRequest struct {
-	Name  string `json:"name"`
-	Phone string `json:"phone"`
-	Email string `json:"email"`
+	Name     string  `json:"name"`
+	Phone    string  `json:"phone"`
+	Email    string  `json:"email"`
+	HireDate string  `json:"hire_date"`
+	Salary   float64 `json:"salary"`
+	Notes    string  `json:"notes"`
 }
 
 type ServiceRequest struct {

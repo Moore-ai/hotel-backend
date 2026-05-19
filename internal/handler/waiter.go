@@ -46,12 +46,8 @@ func (h *WaiterHandler) Create(c *gin.Context) {
 		dto.Error(c, errcode.ErrBadRequest)
 		return
 	}
-	_, err := h.userService.Create(req.Username, req.Password, "waiter", req.Name, req.Phone, req.Email)
+	_, err := h.userService.Create(req.Username, req.Password, "waiter", req.Name, req.Phone, req.Email, req.HireDate, req.Salary, req.Notes)
 	if err != nil {
-		if errors.Is(err, service.ErrUsernameExists) {
-			dto.Error(c, errcode.ErrUsernameDuplicate)
-			return
-		}
 		dto.Error(c, errcode.ErrInternal)
 		return
 	}
@@ -65,7 +61,7 @@ func (h *WaiterHandler) Update(c *gin.Context) {
 		dto.Error(c, errcode.ErrBadRequest)
 		return
 	}
-	waiter, err := h.waiterService.Update(uint(id), req.Name, req.Phone, req.Email)
+	waiter, err := h.waiterService.Update(uint(id), req.Name, req.Phone, req.Email, req.HireDate, req.Salary, req.Notes)
 	if err != nil {
 		dto.Error(c, errcode.ErrInternal)
 		return
