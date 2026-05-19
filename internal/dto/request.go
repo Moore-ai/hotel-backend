@@ -124,6 +124,10 @@ type CancelOrderRequest struct {
 	Reason string `json:"reason" binding:"required,min=2"`
 }
 
+type RejectCancelRequest struct {
+	Reason string `json:"reason"`
+}
+
 type CreateWaiterRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=64"`
 	Password string `json:"password" binding:"required,min=6"`

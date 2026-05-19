@@ -97,6 +97,7 @@ func registerOrderRoutes(api *gin.RouterGroup, orderH *handler.OrderHandler) {
 		orders.GET("/:code", orderH.Get)
 		orders.POST("", orderH.Create)
 		orders.POST("/:code/cancel", orderH.Cancel)
+		orders.POST("/:code/reject-cancel", staffOnly, orderH.RejectCancel)
 		orders.POST("/:code/confirm", staffOnly, orderH.Confirm)
 		orders.PUT("/:code", staffOnly, orderH.Update)
 		orders.DELETE("/:code", staffOnly, orderH.Delete)

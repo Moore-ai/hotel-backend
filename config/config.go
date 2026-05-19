@@ -65,7 +65,8 @@ type AllocationConfig struct {
 }
 
 type CancellationConfig struct {
-	CutoffHours int `mapstructure:"cutoff_hours"`
+	CutoffHours        int    `mapstructure:"cutoff_hours"`
+	DefaultRejectReason string `mapstructure:"default_reject_reason"`
 }
 
 func Load(path string) (*Config, error) {

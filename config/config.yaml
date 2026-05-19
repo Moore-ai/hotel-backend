@@ -34,3 +34,4 @@ allocation:
 
 cancellation:
   cutoff_hours: 24  # CANCELLATION_CUTOFF_HOURS
+  default_reject_reason: "无"

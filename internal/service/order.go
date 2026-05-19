@@ -9,6 +9,7 @@ import (
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
 	"hotel-backend/pkg/obfuscate"
+
 	"github.com/speps/go-hashids/v2"
 	"gorm.io/gorm"
 )
@@ -16,23 +17,25 @@ import (
 var ErrOrderNotFoundInCancel = errors.New("order not found")
 var ErrOrderNotBelongToUser = errors.New("order does not belong to the user")
 var ErrOrderNotPending = errors.New("order is not in pending status")
+var ErrOrderNotCancelRequested = errors.New("order is not in cancel_requested status")
 var ErrRoomStatusConflict = errors.New("room status conflict during cancellation")
 var ErrPastCheckIn = errors.New("cannot cancel an order past check-in date")
 
 type OrderService struct {
-	repo          *repository.OrderRepo
-	roomRepo      *repository.RoomRepo
-	userRepo      *repository.UserRepo
-	allocator     *RoomAllocator
-	auditLog      *AuditLogService
-	notifSvc      *NotificationService
-	db            *gorm.DB
-	cutoffHours   int
-	obfuscateKey  *hashids.HashID
+	repo                *repository.OrderRepo
+	roomRepo            *repository.RoomRepo
+	userRepo            *repository.UserRepo
+	allocator           *RoomAllocator
+	auditLog            *AuditLogService
+	notifSvc            *NotificationService
+	db                  *gorm.DB
+	cutoffHours         int
+	defaultRejectReason string
+	obfuscateKey        *hashids.HashID
 }
 
-func NewOrderService(repo *repository.OrderRepo, roomRepo *repository.RoomRepo, userRepo *repository.UserRepo, allocator *RoomAllocator, auditLog *AuditLogService, notifSvc *NotificationService, db *gorm.DB, cutoffHours int, obfuscateKey *hashids.HashID) *OrderService {
-	return &OrderService{repo: repo, roomRepo: roomRepo, userRepo: userRepo, allocator: allocator, auditLog: auditLog, notifSvc: notifSvc, db: db, cutoffHours: cutoffHours, obfuscateKey: obfuscateKey}
+func NewOrderService(repo *repository.OrderRepo, roomRepo *repository.RoomRepo, userRepo *repository.UserRepo, allocator *RoomAllocator, auditLog *AuditLogService, notifSvc *NotificationService, db *gorm.DB, cutoffHours int, obfuscateKey *hashids.HashID, defaultRejectReason string) *OrderService {
+	return &OrderService{repo: repo, roomRepo: roomRepo, userRepo: userRepo, allocator: allocator, auditLog: auditLog, notifSvc: notifSvc, db: db, cutoffHours: cutoffHours, obfuscateKey: obfuscateKey, defaultRejectReason: defaultRejectReason}
 }
 
 func (s *OrderService) DecodeCode(code string) (uint, error) {
@@ -207,6 +210,48 @@ func (s *OrderService) Update(id uint, checkIn, checkOut, status string, price f
 	if err := s.auditLog.Log(0, action, "order", order.ID, &oldOrder, order, "修改订单"); err != nil {
 		log.Printf("Audit log failed for order %d: %v", order.ID, err)
 	}
+	s.encodeOrder(order)
+	return order, nil
+}
+
+func (s *OrderService) RejectCancel(id uint, reason string) (*model.Order, error) {
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	defer tx.Rollback()
+
+	orderRepo := s.repo.WithTx(tx)
+
+	order, err := orderRepo.FindByIDForUpdate(tx, id)
+	if err != nil {
+		return nil, err
+	}
+	if order.Status != model.OrderStatusCancelRequested {
+		return nil, ErrOrderNotCancelRequested
+	}
+
+	order.Status = model.OrderStatusPending
+	if err := orderRepo.Update(order); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
+	}
+
+	if reason == "" {
+		reason = s.defaultRejectReason
+	}
+	if _, err := s.notifSvc.Create(order.UserID, "cancel_rejected", "取消申请已被驳回",
+		fmt.Sprintf("您的订单 #%d 取消申请未通过，原因：%s", order.ID, reason)); err != nil {
+		log.Printf("Notification failed for order %d: %v", order.ID, err)
+	}
+
+	if err := s.auditLog.Log(0, "rejected_cancel", "order", order.ID, nil, order, "驳回取消申请"); err != nil {
+		log.Printf("Audit log failed for order %d: %v", order.ID, err)
+	}
+
 	s.encodeOrder(order)
 	return order, nil
 }

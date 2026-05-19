@@ -112,6 +112,29 @@ func (h *OrderHandler) ListCancelRequests(c *gin.Context) {
 	dto.Success(c, dto.PageData{List: orders, Total: total, Page: p.Page, PageSize: p.PageSize})
 }
 
+func (h *OrderHandler) RejectCancel(c *gin.Context) {
+	id, err := h.orderService.DecodeCode(c.Param("code"))
+	if err != nil {
+		dto.Error(c, errcode.ErrNotFound)
+		return
+	}
+	var req dto.RejectCancelRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		dto.Error(c, errcode.ErrBadRequest)
+		return
+	}
+	order, err := h.orderService.RejectCancel(id, req.Reason)
+	if err != nil {
+		if errors.Is(err, service.ErrOrderNotCancelRequested) {
+			dto.Error(c, errcode.ErrBadRequest)
+			return
+		}
+		dto.Error(c, errcode.ErrOrderNotFound)
+		return
+	}
+	dto.Success(c, order)
+}
+
 func (h *OrderHandler) Confirm(c *gin.Context) {
 	id, err := h.orderService.DecodeCode(c.Param("code"))
 	if err != nil {
