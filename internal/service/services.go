@@ -18,9 +18,10 @@ type Services struct {
 	Checkin  *CheckinService
 	Notif    *NotificationService
 	Audit    *AuditLogService
+	Appeal   *AppealService
 }
 
-func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *Hub, allocationCfg config.AllocationConfig, cancellationCfg config.CancellationConfig) *Services {
+func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *Hub, allocationCfg config.AllocationConfig, cancellationCfg config.CancellationConfig, appealCfg config.AppealConfig) *Services {
 	audit := NewAuditLogService(repos.Audit)
 	db := repos.DB()
 	user := NewUserService(repos.User, repos.Guest, repos.Employee, repos.Admin, repos.Waiter, audit, db)
@@ -40,5 +41,6 @@ func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *H
 		Checkin:  NewCheckinService(repos.Checkin, repos.Room, repos.Order, allocator, audit, db),
 		Notif:    notifSvc,
 		Audit:    audit,
+		Appeal:   NewAppealService(repos.Appeal, repos.Order, repos.Room, repos.User, notifSvc, audit, db, appealCfg.ReviewStrategy, appealCfg.ReviewStaffIDs),
 	}
 }

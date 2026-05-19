@@ -18,6 +18,7 @@ func AutoMigrate() error {
 		&model.Notification{},
 		&model.CheckoutSchedule{},
 		&model.AuditLog{},
+		&model.Appeal{},
 	)
 	if err != nil {
 		return err

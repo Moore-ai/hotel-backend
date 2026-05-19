@@ -37,3 +37,7 @@ cancellation:
   default_reject_reason: "无"
   notify_strategy: "random_one"  # staff_and_admin | all_staff | random_one
   notify_staff_ids: []
+
+appeal:
+  review_strategy: "admin_only"  # admin_only | random_one
+  review_staff_ids: []

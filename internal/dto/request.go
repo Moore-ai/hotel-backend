@@ -165,3 +165,12 @@ type CreateCheckinRequest struct {
 	RoomID               uint   `json:"room_id"`
 	ExpectedCheckoutTime string `json:"expected_checkout_time" binding:"required"`
 }
+
+type CreateAppealRequest struct {
+	Reason string `json:"reason" binding:"required,min=2"`
+}
+
+type ReviewAppealRequest struct {
+	Action     string `json:"action" binding:"required"`   // approved | rejected
+	ReviewNote string `json:"review_note"`
+}

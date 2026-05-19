@@ -30,6 +30,7 @@ func Setup(handlers *handler.Handlers) *gin.Engine {
 	registerCheckinRoutes(api, handlers.Checkin)
 	registerNotificationRoutes(api, handlers.Notif)
 	registerAuditLogRoutes(api, handlers.Audit)
+	registerAppealRoutes(api, handlers.Appeal, handlers.Order)
 
 	return r
 }
@@ -136,6 +137,17 @@ func registerNotificationRoutes(api *gin.RouterGroup, notifH *handler.Notificati
 		notifs.GET("", notifH.List)
 		notifs.GET("/unread", notifH.UnreadCount)
 		notifs.PUT("/:code/read", notifH.MarkRead)
+	}
+}
+
+func registerAppealRoutes(api *gin.RouterGroup, appealH *handler.AppealHandler, orderH *handler.OrderHandler) {
+	orders := api.Group("/orders")
+	orders.POST("/:code/appeal", appealH.Create)
+
+	appeals := api.Group("/appeals", staffOnly)
+	{
+		appeals.GET("", appealH.List)
+		appeals.POST("/:id/review", appealH.Review)
 	}
 }
 

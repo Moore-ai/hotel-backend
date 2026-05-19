@@ -17,6 +17,7 @@ type Handlers struct {
 	Checkin  *CheckinHandler
 	Notif    *NotificationHandler
 	Audit    *AuditLogHandler
+	Appeal   *AppealHandler
 	WS       *WSHandler
 }
 
@@ -32,6 +33,7 @@ func NewHandlers(services *service.Services, repos *repository.Repositories, hub
 		Checkin:  NewCheckinHandler(services.Checkin),
 		Notif:    NewNotificationHandler(services.Notif),
 		Audit:    NewAuditLogHandler(services.Audit),
+		Appeal:   NewAppealHandler(services.Appeal, services.Order),
 		WS:       NewWSHandler(hub, jwtCfg),
 	}
 }
