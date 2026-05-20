@@ -1029,7 +1029,7 @@ Authorization: Bearer <token>
 {
   "code": 0,
   "data": {
-    "id": 1,
+    "id": "aB3xR7kQ",
     "order_id": 1,
     "user_id": 1,
     "reason": "取消时间仍在合理范围内，请求人工审核",
@@ -1048,7 +1048,7 @@ Authorization: Bearer <token>
 | 400 | 订单不是 pending 状态（ErrOrderNotPending） |
 | 403 | 非本人订单 |
 | 404 | 订单不存在 |
-| 409 | 该订单已有进行中的申诉（ErrAppealExists） |
+| 4005 | 该订单已有进行中的申诉（ErrAppealExists） |
 
 ### 11.2 查看申诉列表
 
@@ -1064,7 +1064,7 @@ Authorization: Bearer <token>
 ### 11.3 审核申诉
 
 ```
-POST /appeals/:id/review
+POST /appeals/:code/review
 Authorization: Bearer <token>
 ```
 
@@ -1088,7 +1088,7 @@ Authorization: Bearer <token>
 {
   "code": 0,
   "data": {
-    "id": 1,
+    "id": "aB3xR7kQ",
     "status": "approved",
     "reviewer_id": 1,
     "review_note": "经核实，同意取消"
@@ -1102,7 +1102,7 @@ Authorization: Bearer <token>
 {
   "code": 0,
   "data": {
-    "id": 1,
+    "id": "aB3xR7kQ",
     "status": "rejected",
     "reviewer_id": 1,
     "review_note": "取消政策不允许"
