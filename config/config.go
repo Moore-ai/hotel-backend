@@ -17,6 +17,7 @@ type Config struct {
 	Allocation   AllocationConfig
 	Cancellation CancellationConfig
 	Appeal       AppealConfig
+	LLM          LLMConfig
 }
 
 type ServerConfig struct {
@@ -75,6 +76,16 @@ type CancellationConfig struct {
 type AppealConfig struct {
 	ReviewStrategy string `mapstructure:"review_strategy"`
 	ReviewStaffIDs []uint `mapstructure:"review_staff_ids"`
+}
+
+type LLMConfig struct {
+	BaseURL      string        `mapstructure:"base_url"`
+	APIKey       string        `mapstructure:"api_key"`
+	Model        string        `mapstructure:"model"`
+	MaxTokens    int           `mapstructure:"max_tokens"`
+	Timeout      time.Duration `mapstructure:"timeout"`
+	SystemPrompt string        `mapstructure:"system_prompt"`
+	MaxHistory   int           `mapstructure:"max_history"`
 }
 
 func Load(path string) (*Config, error) {
