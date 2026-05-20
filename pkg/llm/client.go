@@ -9,26 +9,24 @@ import (
 	"time"
 )
 
-// Client 是与 Anthropic Messages API 通信的客户端
-type Client struct {
+// AnthropicClient 是与 Anthropic Messages API 通信的客户端
+type AnthropicClient struct {
 	config Config
 	http   *http.Client
 }
 
 // Config 是 LLM 客户端的配置
 type Config struct {
-	BaseURL      string
-	APIKey       string
-	Model        string
-	MaxTokens    int
-	Timeout      time.Duration
-	SystemPrompt string
-	MaxHistory   int
+	BaseURL   string
+	APIKey    string
+	Model     string
+	MaxTokens int
+	Timeout   time.Duration
 }
 
-// NewClient 创建新的 LLM 客户端
-func NewClient(cfg Config) *Client {
-	return &Client{
+// NewAnthropicClient 创建新的 LLM 客户端
+func NewAnthropicClient(cfg Config) *AnthropicClient {
+	return &AnthropicClient{
 		config: cfg,
 		http: &http.Client{
 			Timeout: cfg.Timeout,
@@ -56,12 +54,7 @@ type anthropicResponse struct {
 }
 
 // Chat 发送消息到 Anthropic API 并返回结果
-func (c *Client) Chat(systemPrompt string, messages []Message, tools []ToolDef) (*ChatResult, error) {
-	// 当 systemPrompt 为空时，使用配置中的默认 SystemPrompt
-	if systemPrompt == "" {
-		systemPrompt = c.config.SystemPrompt
-	}
-
+func (c *AnthropicClient) Chat(systemPrompt string, messages []Message, tools []ToolDef) (*ChatResult, error) {
 	// nop 模式：baseURL 为空时跳过 API 调用
 	if c.config.BaseURL == "" {
 		return &ChatResult{

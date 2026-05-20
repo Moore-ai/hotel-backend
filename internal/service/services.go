@@ -40,10 +40,9 @@ func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *H
 		Model:        llmCfg.Model,
 		MaxTokens:    llmCfg.MaxTokens,
 		Timeout:      llmCfg.Timeout,
-		SystemPrompt: llmCfg.SystemPrompt,
-		MaxHistory:   llmCfg.MaxHistory,
+
 	}
-	llmClient := llm.NewClient(llmClientCfg)
+	llmClient := llm.NewAnthropicClient(llmClientCfg)
 	return &Services{
 		Auth:     NewAuthService(repos.User, repos.Guest, repos.Employee, repos.Admin, repos.Waiter, user, jwtCfg),
 		User:     user,
