@@ -4,10 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"hotel-backend/internal/database"
 	"hotel-backend/pkg/errcode"
 	"hotel-backend/pkg/jwt"
+
+	"github.com/gin-gonic/gin"
 )
 
 var JWTSecret string
@@ -39,6 +40,7 @@ func Auth() gin.HandlerFunc {
 
 		c.Set("user_id", claims.UserID)
 		c.Set("role", claims.Role)
+		c.Set("raw_token", tokenStr)
 		c.Next()
 	}
 }
