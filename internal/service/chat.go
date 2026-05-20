@@ -12,12 +12,10 @@ import (
 	"hotel-backend/pkg/llm"
 )
 
-// ChatContext 是 tool execute 的上下文
 type ChatContext struct {
 	UserID uint
 }
 
-// ChatFunc 注册一个可供 LLM 调用的工具
 type ChatFunc struct {
 	Definition llm.ToolDef
 	Execute    func(ctx *ChatContext, args json.RawMessage) (string, error)
@@ -29,6 +27,7 @@ type ChatService struct {
 	systemPrompt string
 	tools        []ChatFunc
 	toolMap      map[string]ChatFunc
+	toolDefsCache []llm.ToolDef
 	maxHistory   int
 	// 依赖的 Service
 	waiterSvc *WaiterService
@@ -50,7 +49,6 @@ func NewChatService(llmClient *llm.Client, systemPrompt string, maxHistory int, 
 	return s
 }
 
-// registerTools 注册所有可供 LLM 调用的工具（对应 Anthropic Tool Use）
 func (s *ChatService) registerTools() {
 	s.tools = []ChatFunc{
 		{
@@ -175,31 +173,38 @@ func (s *ChatService) registerTools() {
 	for _, t := range s.tools {
 		s.toolMap[t.Definition.Name] = t
 	}
-}
 
-// toolDefs 返回给 LLM 的工具定义列表
-func (s *ChatService) toolDefs() []llm.ToolDef {
-	defs := make([]llm.ToolDef, len(s.tools))
+	s.toolDefsCache = make([]llm.ToolDef, len(s.tools))
 	for i, t := range s.tools {
-		defs[i] = t.Definition
+		s.toolDefsCache[i] = t.Definition
 	}
-	return defs
 }
 
-// newConversationID 生成一个随机对话 ID（标准库，无外部依赖）
+func (s *ChatService) toolDefs() []llm.ToolDef {
+	return s.toolDefsCache
+}
+
+func (s *ChatService) saveToHistory(ctx context.Context, convKey string, msg llm.Message) {
+	data, _ := json.Marshal(msg)
+	database.RDB.RPush(ctx, convKey, string(data))
+	database.RDB.LTrim(ctx, convKey, 0, int64(s.maxHistory-1))
+	database.RDB.Expire(ctx, convKey, 24*time.Hour)
+}
+
+// newConversationID 无外部依赖的随机 ID
 func newConversationID() string {
 	b := make([]byte, 16)
 	rand.Read(b)
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
-// HandleMessage 处理用户的一条消息，返回 AI 回复
 func (s *ChatService) HandleMessage(userID uint, message string, conversationID string) (reply string, newConvID string, action string, err error) {
 	ctx := context.Background()
 
-	// 处理 conversation_id
 	if conversationID == "" {
 		conversationID = newConversationID()
+		activeKey := fmt.Sprintf("chat:active:%d", userID)
+		database.RDB.Set(ctx, activeKey, conversationID, 24*time.Hour)
 	} else {
 		activeKey := fmt.Sprintf("chat:active:%d", userID)
 		actual, _ := database.RDB.Get(ctx, activeKey).Result()
@@ -209,10 +214,6 @@ func (s *ChatService) HandleMessage(userID uint, message string, conversationID 
 	}
 
 	convKey := fmt.Sprintf("chat:conv:%d:%s", userID, conversationID)
-	activeKey := fmt.Sprintf("chat:active:%d", userID)
-
-	// 设置活跃对话指针
-	database.RDB.Set(ctx, activeKey, conversationID, 24*time.Hour)
 
 	// 从 Redis 取历史消息（Anthropic 格式：user/assistant 交替）
 	history, _ := database.RDB.LRange(ctx, convKey, 0, int64(s.maxHistory-1)).Result()
@@ -230,11 +231,7 @@ func (s *ChatService) HandleMessage(userID uint, message string, conversationID 
 	userMsg := llm.NewUserTextMessage(message)
 	messages = append(messages, userMsg)
 
-	// 保存用户消息到 Redis
-	userJson, _ := json.Marshal(userMsg)
-	database.RDB.RPush(ctx, convKey, string(userJson))
-	database.RDB.LTrim(ctx, convKey, 0, int64(s.maxHistory-1))
-	database.RDB.Expire(ctx, convKey, 24*time.Hour)
+	s.saveToHistory(ctx, convKey, userMsg)
 
 	// 调用 Anthropic API，最多 3 轮 tool use
 	sysPrompt := s.systemPrompt
@@ -245,19 +242,13 @@ func (s *ChatService) HandleMessage(userID uint, message string, conversationID 
 			return "", "", "", err
 		}
 
-		// 保存 assistant 回复到 Redis
 		aiMsg := llm.NewAssistantMessage(result)
-		aiJson, _ := json.Marshal(aiMsg)
-		database.RDB.RPush(ctx, convKey, string(aiJson))
-		database.RDB.LTrim(ctx, convKey, 0, int64(s.maxHistory-1))
-		database.RDB.Expire(ctx, convKey, 24*time.Hour)
+		s.saveToHistory(ctx, convKey, aiMsg)
 
-		// 检查是否需要执行工具
 		if result.ToolCall == nil {
 			return result.Text, conversationID, "", nil
 		}
 
-		// 执行 Tool Use
 		tc := result.ToolCall
 		fn, ok := s.toolMap[tc.Name]
 		if !ok {
@@ -272,15 +263,10 @@ func (s *ChatService) HandleMessage(userID uint, message string, conversationID 
 			toolResult = fmt.Sprintf("执行失败: %s", fnErr.Error())
 		}
 
-		// 将 tool_result 加入对话
 		trMsg := llm.NewToolResultMessage(tc.ID, toolResult)
 		messages = append(messages, aiMsg, trMsg)
 
-		// 保存 tool_result 到 Redis
-		trJson, _ := json.Marshal(trMsg)
-		database.RDB.RPush(ctx, convKey, string(trJson))
-		database.RDB.LTrim(ctx, convKey, 0, int64(s.maxHistory-1))
-		database.RDB.Expire(ctx, convKey, 24*time.Hour)
+		s.saveToHistory(ctx, convKey, trMsg)
 
 		// 最后一轮直接返回工具结果
 		if round == maxRounds-1 {
