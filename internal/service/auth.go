@@ -107,7 +107,7 @@ var (
 )
 
 func (s *AuthService) Register(username, password, name, phone, email string) (*model.User, error) {
-	return s.userService.Create(username, password, "guest", name, phone, email)
+	return s.userService.Create(username, password, "guest", name, phone, email, "", 0, "")
 }
 
 func (s *AuthService) DeleteAccount(userID uint) error {

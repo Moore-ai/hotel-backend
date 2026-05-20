@@ -1,9 +1,10 @@
 package router
 
 import (
-	"github.com/gin-gonic/gin"
 	"hotel-backend/internal/handler"
 	"hotel-backend/internal/middleware"
+
+	"github.com/gin-gonic/gin"
 )
 
 var staffOnly = middleware.RequireRoles("employee", "admin")
@@ -29,6 +30,7 @@ func Setup(handlers *handler.Handlers) *gin.Engine {
 	registerCheckinRoutes(api, handlers.Checkin)
 	registerNotificationRoutes(api, handlers.Notif)
 	registerAuditLogRoutes(api, handlers.Audit)
+	registerAppealRoutes(api, handlers.Appeal, handlers.Order)
 
 	return r
 }
@@ -57,7 +59,7 @@ func registerGuestRoutes(api *gin.RouterGroup, guestH *handler.GuestHandler) {
 }
 
 func registerEmployeeRoutes(api *gin.RouterGroup, empH *handler.EmployeeHandler) {
-	employees := api.Group("/employees", staffOnly)
+	employees := api.Group("/employees", adminOnly)
 	{
 		employees.GET("", empH.List)
 		employees.GET("/:id", empH.Get)
@@ -97,6 +99,7 @@ func registerOrderRoutes(api *gin.RouterGroup, orderH *handler.OrderHandler) {
 		orders.GET("/:code", orderH.Get)
 		orders.POST("", orderH.Create)
 		orders.POST("/:code/cancel", orderH.Cancel)
+		orders.POST("/:code/reject-cancel", staffOnly, orderH.RejectCancel)
 		orders.POST("/:code/confirm", staffOnly, orderH.Confirm)
 		orders.PUT("/:code", staffOnly, orderH.Update)
 		orders.DELETE("/:code", staffOnly, orderH.Delete)
@@ -133,7 +136,18 @@ func registerNotificationRoutes(api *gin.RouterGroup, notifH *handler.Notificati
 	{
 		notifs.GET("", notifH.List)
 		notifs.GET("/unread", notifH.UnreadCount)
-		notifs.PUT("/:id/read", notifH.MarkRead)
+		notifs.PUT("/:code/read", notifH.MarkRead)
+	}
+}
+
+func registerAppealRoutes(api *gin.RouterGroup, appealH *handler.AppealHandler, orderH *handler.OrderHandler) {
+	orders := api.Group("/orders")
+	orders.POST("/:code/appeal", appealH.Create)
+
+	appeals := api.Group("/appeals", staffOnly)
+	{
+		appeals.GET("", appealH.List)
+		appeals.POST("/:code/review", appealH.Review)
 	}
 }
 

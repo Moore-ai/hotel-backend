@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -45,12 +44,8 @@ func (h *GuestHandler) Create(c *gin.Context) {
 		dto.Error(c, errcode.ErrBadRequest)
 		return
 	}
-	_, err := h.userService.Create(req.Username, req.Password, "guest", req.Name, req.Phone, req.Email)
+	_, err := h.userService.Create(req.Username, req.Password, "guest", req.Name, req.Phone, req.Email, "", 0, "")
 	if err != nil {
-		if errors.Is(err, service.ErrUsernameExists) {
-			dto.Error(c, errcode.ErrUsernameDuplicate)
-			return
-		}
 		dto.Error(c, errcode.ErrInternal)
 		return
 	}

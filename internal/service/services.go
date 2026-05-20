@@ -18,16 +18,17 @@ type Services struct {
 	Checkin  *CheckinService
 	Notif    *NotificationService
 	Audit    *AuditLogService
+	Appeal   *AppealService
 }
 
-func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *Hub, allocationCfg config.AllocationConfig, cancellationCfg config.CancellationConfig) *Services {
+func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *Hub, allocationCfg config.AllocationConfig, cancellationCfg config.CancellationConfig, appealCfg config.AppealConfig) *Services {
 	audit := NewAuditLogService(repos.Audit)
 	db := repos.DB()
 	user := NewUserService(repos.User, repos.Guest, repos.Employee, repos.Admin, repos.Waiter, audit, db)
 	strategy := NewStrategyFromConfig(allocationCfg.Strategy)
 	allocator := NewRoomAllocator(repos.Room, repos.Order, strategy)
-	notifSvc := NewNotificationService(repos.Notif, hub)
 	obfKey := obfuscate.NewKey(jwtCfg.Secret)
+	notifSvc := NewNotificationService(repos.Notif, hub, obfKey)
 	return &Services{
 		Auth:     NewAuthService(repos.User, repos.Guest, repos.Employee, repos.Admin, repos.Waiter, user, jwtCfg),
 		User:     user,
@@ -36,9 +37,10 @@ func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *H
 		Admin:    NewAdminService(repos.Admin, audit),
 		Waiter:   NewWaiterService(repos.Waiter, notifSvc, audit, db),
 		Room:     NewRoomService(repos.Room, audit),
-		Order:    NewOrderService(repos.Order, repos.Room, repos.User, allocator, audit, notifSvc, db, cancellationCfg.CutoffHours, obfKey),
+		Order:    NewOrderService(repos.Order, repos.Room, repos.User, allocator, audit, notifSvc, db, cancellationCfg.CutoffHours, obfKey, cancellationCfg.DefaultRejectReason, cancellationCfg.NotifyStrategy, cancellationCfg.NotifyStaffIDs),
 		Checkin:  NewCheckinService(repos.Checkin, repos.Room, repos.Order, allocator, audit, db),
 		Notif:    notifSvc,
 		Audit:    audit,
+		Appeal:   NewAppealService(repos.Appeal, repos.Order, repos.Room, repos.User, notifSvc, audit, db, appealCfg.ReviewStrategy, appealCfg.ReviewStaffIDs, obfKey),
 	}
 }

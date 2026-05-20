@@ -25,7 +25,7 @@ func (s *EmployeeService) FindAll(page, pageSize int) ([]model.Employee, int64, 
 	return s.repo.FindAll(page, pageSize)
 }
 
-func (s *EmployeeService) Update(id uint, name, phone, email string) (*model.Employee, error) {
+func (s *EmployeeService) Update(id uint, name, phone, email, hireDate string, salary float64, notes string) (*model.Employee, error) {
 	employee, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, err
@@ -39,6 +39,15 @@ func (s *EmployeeService) Update(id uint, name, phone, email string) (*model.Emp
 	}
 	if email != "" {
 		employee.Email = email
+	}
+	if hireDate != "" {
+		employee.HireDate = hireDate
+	}
+	if salary > 0 {
+		employee.Salary = salary
+	}
+	if notes != "" {
+		employee.Notes = notes
 	}
 	if err := s.repo.Update(employee); err != nil {
 		return nil, err

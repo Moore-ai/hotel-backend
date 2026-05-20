@@ -15,13 +15,15 @@ const (
 	ErrTokenExpired       = 1002
 	ErrTokenInvalid       = 1003
 	ErrUserNotFound       = 2001
-	ErrUsernameDuplicate  = 2002
 	ErrRoomNotFound       = 3001
 	ErrRoomOccupied       = 3002
 	ErrNoRoomAvailable    = 3003
 	ErrNoWaiterAvailable  = 3004
 	ErrOrderNotFound      = 4001
 	ErrOrderNotPending    = 4002
+	ErrAppealNotFound      = 4003
+	ErrAppealNotPending    = 4004
+	ErrAppealExists        = 4005
 	ErrCheckinNotFound    = 5001
 	ErrAlreadyCheckedOut  = 5002
 )
@@ -38,13 +40,15 @@ var messages = map[int]string{
 	ErrTokenExpired:        "token expired",
 	ErrTokenInvalid:        "invalid token",
 	ErrUserNotFound:        "user not found",
-	ErrUsernameDuplicate:   "username already exists",
 	ErrRoomNotFound:        "room not found",
 	ErrRoomOccupied:        "room is currently occupied",
 	ErrNoRoomAvailable:     "no room available for the requested criteria",
 	ErrNoWaiterAvailable:   "no waiter available",
 	ErrOrderNotFound:       "order not found",
 	ErrOrderNotPending:     "order status is not pending, cannot cancel",
+		ErrAppealNotFound:      "appeal not found",
+		ErrAppealNotPending:    "appeal is not in pending status",
+		ErrAppealExists:        "an active appeal already exists for this order",
 	ErrCheckinNotFound:     "checkin not found",
 	ErrAlreadyCheckedOut:   "already checked out",
 }

@@ -15,6 +15,7 @@ type Repositories struct {
 	Notif    *NotificationRepo
 	Audit    *AuditLogRepo
 	Schedule *CheckoutScheduleRepo
+	Appeal   *AppealRepo
 }
 
 func NewRepositories(db *gorm.DB) *Repositories {
@@ -31,6 +32,7 @@ func NewRepositories(db *gorm.DB) *Repositories {
 		Notif:    NewNotificationRepo(db),
 		Audit:    NewAuditLogRepo(db),
 		Schedule: NewCheckoutScheduleRepo(db),
+		Appeal:   NewAppealRepo(db),
 	}
 }
 

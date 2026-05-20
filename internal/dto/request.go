@@ -57,17 +57,23 @@ type UpdateGuestRequest struct {
 }
 
 type CreateEmployeeRequest struct {
-	Username string `json:"username" binding:"required,min=3,max=64"`
-	Password string `json:"password" binding:"required,min=6"`
-	Name     string `json:"name"`
-	Phone    string `json:"phone"`
-	Email    string `json:"email"`
+	Username string  `json:"username" binding:"required,min=3,max=64"`
+	Password string  `json:"password" binding:"required,min=6"`
+	Name     string  `json:"name"`
+	Phone    string  `json:"phone"`
+	Email    string  `json:"email"`
+	HireDate string  `json:"hire_date"`
+	Salary   float64 `json:"salary"`
+	Notes    string  `json:"notes"`
 }
 
 type UpdateEmployeeRequest struct {
-	Name  string `json:"name"`
-	Phone string `json:"phone"`
-	Email string `json:"email"`
+	Name     string  `json:"name"`
+	Phone    string  `json:"phone"`
+	Email    string  `json:"email"`
+	HireDate string  `json:"hire_date"`
+	Salary   float64 `json:"salary"`
+	Notes    string  `json:"notes"`
 }
 
 type CreateAdminRequest struct {
@@ -124,18 +130,28 @@ type CancelOrderRequest struct {
 	Reason string `json:"reason" binding:"required,min=2"`
 }
 
+type RejectCancelRequest struct {
+	Reason string `json:"reason"`
+}
+
 type CreateWaiterRequest struct {
-	Username string `json:"username" binding:"required,min=3,max=64"`
-	Password string `json:"password" binding:"required,min=6"`
-	Name     string `json:"name"`
-	Phone    string `json:"phone"`
-	Email    string `json:"email"`
+	Username string  `json:"username" binding:"required,min=3,max=64"`
+	Password string  `json:"password" binding:"required,min=6"`
+	Name     string  `json:"name"`
+	Phone    string  `json:"phone"`
+	Email    string  `json:"email"`
+	HireDate string  `json:"hire_date"`
+	Salary   float64 `json:"salary"`
+	Notes    string  `json:"notes"`
 }
 
 type UpdateWaiterRequest struct {
-	Name  string `json:"name"`
-	Phone string `json:"phone"`
-	Email string `json:"email"`
+	Name     string  `json:"name"`
+	Phone    string  `json:"phone"`
+	Email    string  `json:"email"`
+	HireDate string  `json:"hire_date"`
+	Salary   float64 `json:"salary"`
+	Notes    string  `json:"notes"`
 }
 
 type ServiceRequest struct {
@@ -148,4 +164,13 @@ type CreateCheckinRequest struct {
 	UserID               uint   `json:"user_id" binding:"required"`
 	RoomID               uint   `json:"room_id"`
 	ExpectedCheckoutTime string `json:"expected_checkout_time" binding:"required"`
+}
+
+type CreateAppealRequest struct {
+	Reason string `json:"reason" binding:"required,min=2"`
+}
+
+type ReviewAppealRequest struct {
+	Action     string `json:"action" binding:"required"`   // approved | rejected
+	ReviewNote string `json:"review_note"`
 }

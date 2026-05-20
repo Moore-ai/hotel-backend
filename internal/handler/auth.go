@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"time"
 
 	"hotel-backend/config"
@@ -73,10 +72,6 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 	user, err := h.authService.Register(req.Username, req.Password, req.Name, req.Phone, req.Email)
 	if err != nil {
-		if errors.Is(err, service.ErrUsernameExists) {
-			dto.Error(c, errcode.ErrUsernameDuplicate)
-			return
-		}
 		dto.Error(c, errcode.ErrConflict)
 		return
 	}

@@ -1,8 +1,6 @@
 package service
 
 import (
-	"errors"
-
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
 	"hotel-backend/pkg/hash"
@@ -24,17 +22,7 @@ func NewUserService(repo *repository.UserRepo, guestRepo *repository.GuestRepo, 
 	return &UserService{repo: repo, guestRepo: guestRepo, employeeRepo: employeeRepo, adminRepo: adminRepo, waiterRepo: waiterRepo, auditLog: auditLog, db: db}
 }
 
-var ErrUsernameExists = errors.New("username already exists")
-
-func (s *UserService) Create(username, password, role, name, phone, email string) (*model.User, error) {
-	_, err := s.repo.FindByUsername(username)
-	if err == nil {
-		return nil, ErrUsernameExists
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err
-	}
-
+func (s *UserService) Create(username, password, role, name, phone, email string, hireDate string, salary float64, notes string) (*model.User, error) {
 	pw, err := hash.HashPassword(password)
 	if err != nil {
 		return nil, err
@@ -71,10 +59,13 @@ func (s *UserService) Create(username, password, role, name, phone, email string
 	case "employee":
 		empRepo := s.employeeRepo.WithTx(tx)
 		if err := empRepo.Create(&model.Employee{
-			UserID: user.ID,
-			Name:   name,
-			Phone:  phone,
-			Email:  email,
+			UserID:   user.ID,
+			Name:     name,
+			Phone:    phone,
+			Email:    email,
+			HireDate: hireDate,
+			Salary:   salary,
+			Notes:    notes,
 		}); err != nil {
 			return nil, err
 		}
@@ -91,10 +82,13 @@ func (s *UserService) Create(username, password, role, name, phone, email string
 	case "waiter":
 		waiterRepo := s.waiterRepo.WithTx(tx)
 		if err := waiterRepo.Create(&model.Waiter{
-			UserID: user.ID,
-			Name:   name,
-			Phone:  phone,
-			Email:  email,
+			UserID:   user.ID,
+			Name:     name,
+			Phone:    phone,
+			Email:    email,
+			HireDate: hireDate,
+			Salary:   salary,
+			Notes:    notes,
 		}); err != nil {
 			return nil, err
 		}

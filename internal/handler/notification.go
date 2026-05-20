@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"strconv"
-
 	"github.com/gin-gonic/gin"
 	"hotel-backend/internal/dto"
 	"hotel-backend/internal/service"
@@ -40,8 +38,12 @@ func (h *NotificationHandler) UnreadCount(c *gin.Context) {
 
 func (h *NotificationHandler) MarkRead(c *gin.Context) {
 	userID := c.GetUint("user_id")
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err := h.notifService.MarkRead(uint(id), userID); err != nil {
+	id, err := h.notifService.DecodeCode(c.Param("code"))
+	if err != nil {
+		dto.Error(c, errcode.ErrNotFound)
+		return
+	}
+	if err := h.notifService.MarkRead(id, userID); err != nil {
 		dto.Error(c, errcode.ErrInternal)
 		return
 	}

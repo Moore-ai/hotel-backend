@@ -25,7 +25,7 @@ func main() {
 	go hub.Run()
 
 	repos := repository.NewRepositories(database.DB)
-	services := service.NewServices(repos, cfg.JWT, hub, cfg.Allocation, cfg.Cancellation)
+	services := service.NewServices(repos, cfg.JWT, hub, cfg.Allocation, cfg.Cancellation, cfg.Appeal)
 	handlers := handler.NewHandlers(services, repos, hub, cfg.JWT)
 
 	go service.NewScheduler(repos.Checkin, repos.Schedule, services.Notif, services.Checkin, repos.User, repos.Guest, cfg.Checkout).Run()
