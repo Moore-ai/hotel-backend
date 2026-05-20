@@ -1,7 +1,9 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/viper"
@@ -90,12 +92,16 @@ type LLMConfig struct {
 
 func Load(path string) (*Config, error) {
 	v := viper.New()
-	v.SetConfigFile(path)
 	v.SetConfigType("yaml")
 	v.AutomaticEnv()
 
-	if err := v.ReadInConfig(); err != nil {
+	raw, err := os.ReadFile(path)
+	if err != nil {
 		return nil, fmt.Errorf("failed to read config: %w", err)
+	}
+	expanded := os.ExpandEnv(string(raw))
+	if err := v.ReadConfig(bytes.NewReader([]byte(expanded))); err != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	var cfg Config
