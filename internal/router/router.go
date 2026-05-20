@@ -147,7 +147,7 @@ func registerAppealRoutes(api *gin.RouterGroup, appealH *handler.AppealHandler, 
 	appeals := api.Group("/appeals", staffOnly)
 	{
 		appeals.GET("", appealH.List)
-		appeals.POST("/:id/review", appealH.Review)
+		appeals.POST("/:code/review", appealH.Review)
 	}
 }
 

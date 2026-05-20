@@ -263,7 +263,7 @@ go run main.go
 | POST | `/api/v1/orders/:code/reject-cancel` | employee/admin | 驳回取消申请 |
 | POST | `/api/v1/orders/:code/appeal` | 全部 | 住户对驳回决定提起申诉 |
 | GET | `/api/v1/appeals` | employee/admin | 查看申诉列表 |
-| POST | `/api/v1/appeals/:id/review` | employee/admin | 审核申诉 |
+| POST | `/api/v1/appeals/:code/review` | employee/admin | 审核申诉 |
 | POST | `/api/v1/orders/:code/confirm` | employee/admin | 确认入住（员工凭 code 确认订单） |
 | PUT | `/api/v1/orders/:code` | employee/admin | 更新订单（含审批取消请求） |
 | DELETE | `/api/v1/orders/:code` | employee/admin | 删除订单 |
@@ -312,11 +312,11 @@ allocation:
 - 员工通过 `PUT /orders/:code` 或 `POST /orders/:code/reject-cancel` 审批
   - 通过（`cancelled`）：房间释放，客户收到 `cancel_approved` 通知
   - 驳回（`pending`）：客户收到 `cancel_rejected` 通知，并可提起申诉
-- 申诉流程：客户 `POST /orders/:code/appeal` → 员工 `POST /appeals/:id/review`
+- 申诉流程：客户 `POST /orders/:code/appeal` → 员工 `POST /appeals/:code/review`
   - 通过（`approved`）：订单取消，房间释放
   - 驳回（`rejected`）：订单保持 `pending`
 - 申诉审核策略可配置（`admin_only` / `random_one`）
-- 订单和通知 ID 使用 Hashids 加密为混淆字符串，不对外暴露真实 ID
+- 订单、通知和申诉 ID 使用 Hashids 加密为混淆字符串，不对外暴露真实 ID
 
 ```yaml
 cancellation:

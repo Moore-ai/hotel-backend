@@ -2,8 +2,7 @@ package handler
 
 import (
 	"errors"
-	"strconv"
-
+	
 	"github.com/gin-gonic/gin"
 	"hotel-backend/internal/dto"
 	"hotel-backend/internal/service"
@@ -69,7 +68,11 @@ func (h *AppealHandler) List(c *gin.Context) {
 }
 
 func (h *AppealHandler) Review(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	id, err := h.appealService.DecodeCode(c.Param("code"))
+	if err != nil {
+		dto.Error(c, errcode.ErrAppealNotFound)
+		return
+	}
 	reviewerID := c.GetUint("user_id")
 
 	var req dto.ReviewAppealRequest
