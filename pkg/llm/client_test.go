@@ -27,7 +27,9 @@ func TestNewUserTextMessage(t *testing.T) {
 		t.Fatalf("expected role user, got %s", msg.Role)
 	}
 	var blocks []ContentBlock
-	json.Unmarshal(msg.Content, &blocks)
+	if err := json.Unmarshal(msg.Content, &blocks); err != nil {
+		t.Fatalf("failed to unmarshal content: %v", err)
+	}
 	if len(blocks) != 1 || blocks[0].Type != ContentTypeText || blocks[0].Text != "hello" {
 		t.Fatalf("unexpected content blocks: %+v", blocks)
 	}
@@ -39,7 +41,9 @@ func TestNewToolResultMessage(t *testing.T) {
 		t.Fatalf("expected role user, got %s", msg.Role)
 	}
 	var blocks []ContentBlock
-	json.Unmarshal(msg.Content, &blocks)
+	if err := json.Unmarshal(msg.Content, &blocks); err != nil {
+		t.Fatalf("failed to unmarshal content: %v", err)
+	}
 	if len(blocks) != 1 || blocks[0].Type != ContentTypeToolResult {
 		t.Fatalf("unexpected content blocks: %+v", blocks)
 	}
@@ -60,7 +64,9 @@ func TestNewAssistantMessage(t *testing.T) {
 		t.Fatalf("expected role assistant, got %s", msg.Role)
 	}
 	var blocks []ContentBlock
-	json.Unmarshal(msg.Content, &blocks)
+	if err := json.Unmarshal(msg.Content, &blocks); err != nil {
+		t.Fatalf("failed to unmarshal content: %v", err)
+	}
 	if len(blocks) != 1 || blocks[0].Type != ContentTypeText || blocks[0].Text != "hello" {
 		t.Fatalf("unexpected content blocks: %+v", blocks)
 	}

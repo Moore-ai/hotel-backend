@@ -57,6 +57,11 @@ type anthropicResponse struct {
 
 // Chat 发送消息到 Anthropic API 并返回结果
 func (c *Client) Chat(systemPrompt string, messages []Message, tools []ToolDef) (*ChatResult, error) {
+	// 当 systemPrompt 为空时，使用配置中的默认 SystemPrompt
+	if systemPrompt == "" {
+		systemPrompt = c.config.SystemPrompt
+	}
+
 	// nop 模式：baseURL 为空时跳过 API 调用
 	if c.config.BaseURL == "" {
 		return &ChatResult{
