@@ -43,9 +43,9 @@ appeal:
   review_staff_ids: []
 
 llm:
-  base_url: "https://api.anthropic.com/v1"
+  base_url: "https://api.deepseek.com/anthropic"
   api_key: "${ANTHROPIC_API_KEY}"
-  model: "claude-sonnet-4-20250514"
+  model: "deepseek-v4-flash"
   max_tokens: 1024
   timeout: 30s
   system_prompt: "你是酒店的智能管家，你的职责是协助住客解答疑问、提供服务和帮助。请用中文回复，保持友好专业的态度。"

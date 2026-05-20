@@ -1,3 +1,4 @@
+.env
 .vscode/
 *.md
 !api-docs/*.md

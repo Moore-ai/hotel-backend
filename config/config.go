@@ -3,7 +3,9 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -90,7 +92,35 @@ type LLMConfig struct {
 	MaxHistory   int           `mapstructure:"max_history"`
 }
 
+// 读取 .env 文件并设置到环境变量（不覆盖已存在的系统环境变量）
+func loadEnv(path string) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	n := 0
+	for line := range strings.SplitSeq(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		k, v, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		k = strings.TrimSpace(k)
+		v = strings.TrimSpace(v)
+		if os.Getenv(k) == "" {
+			os.Setenv(k, v)
+			n++
+		}
+	}
+	log.Printf("Config: loaded %d variables from %s (existing env vars preserved)", n, path)
+}
+
 func Load(path string) (*Config, error) {
+	loadEnv(".env")
+
 	v := viper.New()
 	v.SetConfigType("yaml")
 	v.AutomaticEnv()
@@ -107,6 +137,21 @@ func Load(path string) (*Config, error) {
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	// 记录 LLM API key 来源
+	keySource := "config.yaml"
+	if _, set := os.LookupEnv("ANTHROPIC_API_KEY"); set {
+		keySource = "system environment"
+	} else if _, set := os.LookupEnv("LLM_API_KEY"); set {
+		keySource = "system environment (LLM_API_KEY)"
+	}
+	if cfg.LLM.APIKey != "" {
+		prefix := cfg.LLM.APIKey
+		if len(prefix) > 8 {
+			prefix = prefix[:8] + "..."
+		}
+		log.Printf("Config: LLM API key from %s (%s)", keySource, prefix)
 	}
 
 	return &cfg, nil
