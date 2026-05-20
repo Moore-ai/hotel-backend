@@ -8,7 +8,9 @@ import (
 
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
+	"hotel-backend/pkg/obfuscate"
 
+	"github.com/speps/go-hashids/v2"
 	"gorm.io/gorm"
 )
 
@@ -34,10 +36,30 @@ type AppealService struct {
 	db             *gorm.DB
 	reviewStrategy string
 	reviewStaffIDs []uint
+	obfuscateKey   *hashids.HashID
 }
 
-func NewAppealService(repo *repository.AppealRepo, orderRepo *repository.OrderRepo, roomRepo *repository.RoomRepo, userRepo *repository.UserRepo, notifSvc *NotificationService, auditLog *AuditLogService, db *gorm.DB, reviewStrategy string, reviewStaffIDs []uint) *AppealService {
-	return &AppealService{repo: repo, orderRepo: orderRepo, roomRepo: roomRepo, userRepo: userRepo, notifSvc: notifSvc, auditLog: auditLog, db: db, reviewStrategy: reviewStrategy, reviewStaffIDs: reviewStaffIDs}
+func NewAppealService(repo *repository.AppealRepo, orderRepo *repository.OrderRepo, roomRepo *repository.RoomRepo, userRepo *repository.UserRepo, notifSvc *NotificationService, auditLog *AuditLogService, db *gorm.DB, reviewStrategy string, reviewStaffIDs []uint, obfuscateKey *hashids.HashID) *AppealService {
+	return &AppealService{repo: repo, orderRepo: orderRepo, roomRepo: roomRepo, userRepo: userRepo, notifSvc: notifSvc, auditLog: auditLog, db: db, reviewStrategy: reviewStrategy, reviewStaffIDs: reviewStaffIDs, obfuscateKey: obfuscateKey}
+}
+
+func (s *AppealService) DecodeCode(code string) (uint, error) {
+	return obfuscate.Decode(s.obfuscateKey, code)
+}
+
+func (s *AppealService) encodeAppeal(a *model.Appeal) {
+	code, err := obfuscate.Encode(s.obfuscateKey, a.ID)
+	if err != nil {
+		log.Printf("Failed to encode appeal %d: %v", a.ID, err)
+		return
+	}
+	a.AppealCode = code
+}
+
+func (s *AppealService) encodeAppeals(appeals []model.Appeal) {
+	for i := range appeals {
+		s.encodeAppeal(&appeals[i])
+	}
 }
 
 func (s *AppealService) Create(orderID, userID uint, reason string) (*model.Appeal, error) {
@@ -90,15 +112,24 @@ func (s *AppealService) Create(orderID, userID uint, reason string) (*model.Appe
 		log.Printf("Audit log failed for appeal order %d: %v", orderID, err)
 	}
 
+	s.encodeAppeal(appeal)
 	return appeal, nil
 }
 
 func (s *AppealService) FindByID(id uint) (*model.Appeal, error) {
-	return s.repo.FindByID(id)
+	appeal, err := s.repo.FindByID(id)
+	if err == nil {
+		s.encodeAppeal(appeal)
+	}
+	return appeal, err
 }
 
 func (s *AppealService) FindAll(status string, page, pageSize int) ([]model.Appeal, int64, error) {
-	return s.repo.FindByStatus(status, page, pageSize)
+	appeals, total, err := s.repo.FindByStatus(status, page, pageSize)
+	if err == nil {
+		s.encodeAppeals(appeals)
+	}
+	return appeals, total, err
 }
 
 func (s *AppealService) Review(id, reviewerID uint, action, reviewNote string) (*model.Appeal, error) {
@@ -179,6 +210,7 @@ func (s *AppealService) Review(id, reviewerID uint, action, reviewNote string) (
 		log.Printf("Audit log failed: %v", err)
 	}
 
+	s.encodeAppeal(appeal)
 	return appeal, nil
 }
 

@@ -41,6 +41,6 @@ func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *H
 		Checkin:  NewCheckinService(repos.Checkin, repos.Room, repos.Order, allocator, audit, db),
 		Notif:    notifSvc,
 		Audit:    audit,
-		Appeal:   NewAppealService(repos.Appeal, repos.Order, repos.Room, repos.User, notifSvc, audit, db, appealCfg.ReviewStrategy, appealCfg.ReviewStaffIDs),
+		Appeal:   NewAppealService(repos.Appeal, repos.Order, repos.Room, repos.User, notifSvc, audit, db, appealCfg.ReviewStrategy, appealCfg.ReviewStaffIDs, obfKey),
 	}
 }
