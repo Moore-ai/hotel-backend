@@ -23,12 +23,12 @@ type ChatFunc struct {
 
 // ChatService 处理 AI 智能管家的对话编排
 type ChatService struct {
-	llmClient    *llm.AnthropicClient
-	systemPrompt string
-	tools        []ChatFunc
-	toolMap      map[string]ChatFunc
+	llmClient     *llm.AnthropicClient
+	systemPrompt  string
+	tools         []ChatFunc
+	toolMap       map[string]ChatFunc
 	toolDefsCache []llm.ToolDef
-	maxHistory   int
+	maxHistory    int
 	// 依赖的 Service
 	waiterSvc *WaiterService
 	orderSvc  *OrderService

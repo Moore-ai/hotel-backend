@@ -23,8 +23,8 @@ const (
 
 // ContentBlock 表示 Anthropic 响应中的单个内容块
 type ContentBlock struct {
-	Type  string `json:"type"`            // text / tool_use / tool_result
-	Text  string `json:"text,omitempty"`  // text 块的内容
+	Type string `json:"type"`           // text / tool_use / tool_result
+	Text string `json:"text,omitempty"` // text 块的内容
 
 	// tool_use 字段
 	ID    string          `json:"id,omitempty"`    // tool_use 的 ID

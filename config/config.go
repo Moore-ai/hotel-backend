@@ -10,12 +10,12 @@ import (
 )
 
 type Config struct {
-	Server     ServerConfig
-	Database   DatabaseConfig
-	Redis      RedisConfig
-	JWT        JWTConfig
-	Checkout   CheckoutConfig
-	Admin      AdminConfig
+	Server       ServerConfig
+	Database     DatabaseConfig
+	Redis        RedisConfig
+	JWT          JWTConfig
+	Checkout     CheckoutConfig
+	Admin        AdminConfig
 	Allocation   AllocationConfig
 	Cancellation CancellationConfig
 	Appeal       AppealConfig
@@ -69,10 +69,10 @@ type AllocationConfig struct {
 }
 
 type CancellationConfig struct {
-	CutoffHours        int    `mapstructure:"cutoff_hours"`
+	CutoffHours         int    `mapstructure:"cutoff_hours"`
 	DefaultRejectReason string `mapstructure:"default_reject_reason"`
-	NotifyStrategy     string `mapstructure:"notify_strategy"`
-	NotifyStaffIDs     []uint `mapstructure:"notify_staff_ids"`
+	NotifyStrategy      string `mapstructure:"notify_strategy"`
+	NotifyStaffIDs      []uint `mapstructure:"notify_staff_ids"`
 }
 
 type AppealConfig struct {

@@ -35,12 +35,11 @@ func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *H
 	orderSvc := NewOrderService(repos.Order, repos.Room, repos.User, allocator, audit, notifSvc, db, cancellationCfg.CutoffHours, obfKey, cancellationCfg.DefaultRejectReason, cancellationCfg.NotifyStrategy, cancellationCfg.NotifyStaffIDs)
 	appealSvc := NewAppealService(repos.Appeal, repos.Order, repos.Room, repos.User, notifSvc, audit, db, appealCfg.ReviewStrategy, appealCfg.ReviewStaffIDs, obfKey)
 	llmClientCfg := llm.Config{
-		BaseURL:      llmCfg.BaseURL,
-		APIKey:       llmCfg.APIKey,
-		Model:        llmCfg.Model,
-		MaxTokens:    llmCfg.MaxTokens,
-		Timeout:      llmCfg.Timeout,
-
+		BaseURL:   llmCfg.BaseURL,
+		APIKey:    llmCfg.APIKey,
+		Model:     llmCfg.Model,
+		MaxTokens: llmCfg.MaxTokens,
+		Timeout:   llmCfg.Timeout,
 	}
 	llmClient := llm.NewAnthropicClient(llmClientCfg)
 	return &Services{
