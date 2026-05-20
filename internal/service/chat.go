@@ -129,15 +129,17 @@ func (s *ChatService) registerTools() {
 				if err := json.Unmarshal(args, &req); err != nil {
 					return "", fmt.Errorf("invalid arguments: %w", err)
 				}
+				// 先验证订单属于当前用户
+				order, err := s.orderSvc.FindByID(req.OrderID)
+				if err != nil || order.UserID != ctx.UserID {
+					return "", fmt.Errorf("未找到该订单")
+				}
+				// 查询申诉
 				appeal, err := s.appealSvc.FindByOrderID(req.OrderID)
 				if err != nil {
-					return "", err
+					return "该订单暂无申诉记录", nil
 				}
-				if appeal.UserID != ctx.UserID {
-					return "", fmt.Errorf("无权查看此申诉")
-				}
-				status := appeal.Status
-				return fmt.Sprintf("订单 #%d 的申诉状态：%s（提交于 %s）", req.OrderID, status, appeal.CreatedAt.Format("2006-01-02 15:04")), nil
+				return fmt.Sprintf("订单 %s 的申诉状态：%s（提交于 %s）", order.OrderCode, appeal.Status, appeal.CreatedAt.Format("2006-01-02 15:04")), nil
 			},
 		},
 		{
@@ -165,7 +167,7 @@ func (s *ChatService) registerTools() {
 				if err != nil {
 					return "", err
 				}
-				return fmt.Sprintf("申诉已提交，申诉编号 #%d，目前状态：%s，请耐心等待审核", appeal.ID, appeal.Status), nil
+				return fmt.Sprintf("申诉已提交，申诉编号 %s，目前状态：%s，请耐心等待审核", appeal.AppealCode, appeal.Status), nil
 			},
 		},
 	}
