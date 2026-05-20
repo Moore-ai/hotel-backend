@@ -13,6 +13,7 @@ const (
 	ContentTypeText       = "text"
 	ContentTypeToolUse    = "tool_use"
 	ContentTypeToolResult = "tool_result"
+	ContentTypeThinking  = "thinking"
 )
 
 // StopReason values
@@ -34,6 +35,10 @@ type ContentBlock struct {
 	// tool_result 字段
 	ToolUseID string `json:"tool_use_id,omitempty"`
 	Content   string `json:"content,omitempty"` // tool_result 的文本内容
+
+	// thinking（推理内容）：DeepSeek 的 Anthropic 兼容接口要求 content block 中始终存在此字段
+	Thinking  string `json:"thinking"`
+	Signature string `json:"signature,omitempty"`
 }
 
 // ToolCall 提取自 tool_use 内容块

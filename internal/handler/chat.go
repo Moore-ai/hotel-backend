@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"log"
+
 	"github.com/gin-gonic/gin"
 
 	"hotel-backend/internal/dto"
@@ -27,6 +29,7 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 
 	reply, convID, action, err := h.chatSvc.HandleMessage(userID, req.Message, req.ConversationID)
 	if err != nil {
+		log.Printf("Chat error: %v", err)
 		dto.Error(c, errcode.ErrLLMUnavailable)
 		return
 	}

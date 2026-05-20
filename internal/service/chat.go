@@ -236,7 +236,8 @@ func (s *ChatService) HandleMessage(userID uint, message string, conversationID 
 	// 调用 Anthropic API，最多 3 轮 tool use
 	sysPrompt := s.systemPrompt
 	maxRounds := 3
-	for round := 0; round < maxRounds; round++ {
+	var lastAction string
+	for round := range maxRounds {
 		result, err := s.llmClient.Chat(sysPrompt, messages, s.toolDefs())
 		if err != nil {
 			return "", "", "", err
@@ -246,10 +247,11 @@ func (s *ChatService) HandleMessage(userID uint, message string, conversationID 
 		s.saveToHistory(ctx, convKey, aiMsg)
 
 		if result.ToolCall == nil {
-			return result.Text, conversationID, "", nil
+			return result.Text, conversationID, lastAction, nil
 		}
 
 		tc := result.ToolCall
+		lastAction = tc.Name
 		fn, ok := s.toolMap[tc.Name]
 		if !ok {
 			// 未知工具，告诉 LLM
@@ -270,9 +272,9 @@ func (s *ChatService) HandleMessage(userID uint, message string, conversationID 
 
 		// 最后一轮直接返回工具结果
 		if round == maxRounds-1 {
-			return toolResult, conversationID, tc.Name, nil
+			return toolResult, conversationID, lastAction, nil
 		}
 	}
 
-	return "请求处理超时，请重试", conversationID, "", nil
+	return "请求处理超时，请重试", conversationID, lastAction, nil
 }
