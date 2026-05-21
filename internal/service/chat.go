@@ -23,7 +23,7 @@ type ChatFunc struct {
 
 // ChatService 处理 AI 智能管家的对话编排
 type ChatService struct {
-	llmClient     *llm.AnthropicClient
+	llmClient     llm.Provider
 	systemPrompt  string
 	tools         []ChatFunc
 	toolMap       map[string]ChatFunc
@@ -35,7 +35,7 @@ type ChatService struct {
 	appealSvc *AppealService
 }
 
-func NewChatService(llmClient *llm.AnthropicClient, systemPrompt string, maxHistory int, waiterSvc *WaiterService, orderSvc *OrderService, appealSvc *AppealService) *ChatService {
+func NewChatService(llmClient llm.Provider, systemPrompt string, maxHistory int, waiterSvc *WaiterService, orderSvc *OrderService, appealSvc *AppealService) *ChatService {
 	s := &ChatService{
 		llmClient:    llmClient,
 		systemPrompt: systemPrompt,

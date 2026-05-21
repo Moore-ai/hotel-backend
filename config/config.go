@@ -83,6 +83,7 @@ type AppealConfig struct {
 }
 
 type LLMConfig struct {
+	Provider     string        `mapstructure:"provider"`      // anthropic | ollama
 	BaseURL      string        `mapstructure:"base_url"`
 	APIKey       string        `mapstructure:"api_key"`
 	Model        string        `mapstructure:"model"`

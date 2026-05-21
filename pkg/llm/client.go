@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 )
@@ -15,8 +16,20 @@ type AnthropicClient struct {
 	http   *http.Client
 }
 
+// Provider 是 LLM 服务商接口，支持多 provider
+type Provider interface {
+	Chat(systemPrompt string, messages []Message, tools []ToolDef) (*ChatResult, error)
+}
+
+// Provider 常量
+const (
+	ProviderAnthropic = "anthropic"
+	ProviderOllama    = "ollama"
+)
+
 // Config 是 LLM 客户端的配置
 type Config struct {
+	Provider  string
 	BaseURL   string
 	APIKey    string
 	Model     string
@@ -24,7 +37,28 @@ type Config struct {
 	Timeout   time.Duration
 }
 
-// NewAnthropicClient 创建新的 LLM 客户端
+// NewClient 创建指定 provider 的 LLM 客户端
+func NewClient(cfg Config) Provider {
+	switch cfg.Provider {
+	case ProviderOllama:
+		return NewOllamaClient(cfg)
+	case ProviderAnthropic, "":
+		return NewAnthropicClient(cfg)
+	default:
+		log.Printf("Warning: unknown LLM provider %q, falling back to anthropic", cfg.Provider)
+		return NewAnthropicClient(cfg)
+	}
+}
+
+func nopResult() *ChatResult {
+	return &ChatResult{
+		Content: []ContentBlock{{Type: ContentTypeText, Text: "nop mode response"}},
+		Text:    "nop mode response",
+		Role:    RoleAssistant,
+	}
+}
+
+// NewAnthropicClient 创建 Anthropic Messages API 客户端
 func NewAnthropicClient(cfg Config) *AnthropicClient {
 	return &AnthropicClient{
 		config: cfg,

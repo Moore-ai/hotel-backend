@@ -2,10 +2,11 @@ package llm
 
 import "encoding/json"
 
-// Role constants (Anthropic: only "user" and "assistant")
+// Role constants
 const (
 	RoleUser      = "user"
 	RoleAssistant = "assistant"
+	RoleSystem    = "system"
 )
 
 // Content block types (Anthropic content blocks)
