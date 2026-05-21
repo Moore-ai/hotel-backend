@@ -21,7 +21,8 @@
 - **入住 / 退房** — 追踪入住信息及预计退房时间，支持事务保证数据一致性
 - **服务员派单** — 住户发起服务请求，系统随机派单给空闲服务员，实时通知
 - **通知系统** — REST API + WebSocket 实时推送，支持多种通知类型
-- **ID 加密** — 订单和通知 ID 使用 Hashids 加密为混淆字符串，不暴露真实 ID
+- **ID 加密** — 订单、通知和申诉 ID 使用 Hashids 加密为混淆字符串，不暴露真实 ID
+- **AI 智能管家** — 住客通过自然语言对话完成酒店咨询、服务请求、订单查询和申诉处理，支持云端 Anthropic API 和本地 Ollama 模型
 - **审计日志** — 所有数据变更均记录不可篡改的日志，包含修改前后的完整快照
 - **统一响应格式** — 标准化的 JSON 响应结构与错误码
 
@@ -39,7 +40,7 @@ hotel-backend/
 │   ├── middleware/      # JWT 认证、RBAC 鉴权、请求日志
 │   ├── router/          # 路由注册
 │   └── dto/             # 请求/响应结构体
-├── pkg/                 # 可复用工具（JWT、bcrypt、错误码）
+├── pkg/                 # 可复用工具（JWT、bcrypt、错误码、LLM 客户端）
 ├── scripts/             # 集成测试脚本
 ├── test/                # 功能测试脚本
 └── main.go
@@ -157,6 +158,14 @@ allocation:
 appeal:
   review_strategy: "admin_only"  # admin_only | random_one
   review_staff_ids: []
+
+llm:
+  provider: "anthropic"  # anthropic | ollama
+  base_url: "https://api.anthropic.com/v1"
+  api_key: "${ANTHROPIC_API_KEY}"
+  model: "claude-sonnet-4-20250514"
+  max_tokens: 1024
+  timeout: 30s
 
 admin:
   username: "admin"         # ADMIN_USERNAME
@@ -329,6 +338,40 @@ appeal:
   review_strategy: "admin_only"  # admin_only | random_one
   review_staff_ids: []
 ```
+
+## AI 智能管家
+
+AI 智能管家为住客提供自然语言交互入口，通过单一  端点完成酒店信息问答、服务请求、订单查询和申诉处理。
+
+### 对话流程
+
+
+
+
+
+### 可调用工具
+
+| 工具 | 触发场景 | 功能 |
+|------|---------|------|
+|  | 叫服务员到房间 | 随机派单 + 双方通知 |
+|  | 查订单 | 查询当前用户订单列表 |
+|  | 查申诉进度 | 查询指定订单的申诉状态 |
+|  | 发起申诉 | 对驳回决定提起申诉 |
+
+### LLM Provider 配置
+
+支持两种 LLM 服务商，通过  切换：
+
+
+
+API Key 优先从系统环境变量读取，其次从项目根目录的  文件读取。
+
+### 注意事项
+
+- 对话上下文保存在 Redis 中（24 小时 TTL，保留最近 20 条消息）
+- 每个用户同一时间只有一个活跃对话
+- LLM 回答酒店设施信息（退房时间、健身房等）基于模型知识，非实时查询
+- 云端模型（Anthropic/DeepSeek）支持工具调用；小型本地 Ollama 模型可能仅支持文本对话
 
 ## 认证方式
 
