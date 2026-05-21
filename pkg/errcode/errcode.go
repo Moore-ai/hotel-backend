@@ -26,6 +26,8 @@ const (
 	ErrAppealExists        = 4005
 	ErrCheckinNotFound    = 5001
 	ErrAlreadyCheckedOut  = 5002
+	ErrLLMUnavailable     = 6001
+	ErrLLMInvalidResp     = 6002
 )
 
 var messages = map[int]string{
@@ -51,6 +53,8 @@ var messages = map[int]string{
 		ErrAppealExists:        "an active appeal already exists for this order",
 	ErrCheckinNotFound:     "checkin not found",
 	ErrAlreadyCheckedOut:   "already checked out",
+	ErrLLMUnavailable:     "AI 管家暂时不可用，请稍后再试",
+	ErrLLMInvalidResp:     "AI 响应解析失败，请重试",
 }
 
 func Message(code int) string {

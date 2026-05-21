@@ -19,6 +19,7 @@ type Handlers struct {
 	Audit    *AuditLogHandler
 	Appeal   *AppealHandler
 	WS       *WSHandler
+	Chat     *ChatHandler
 }
 
 func NewHandlers(services *service.Services, repos *repository.Repositories, hub *service.Hub, jwtCfg config.JWTConfig) *Handlers {
@@ -35,5 +36,6 @@ func NewHandlers(services *service.Services, repos *repository.Repositories, hub
 		Audit:    NewAuditLogHandler(services.Audit),
 		Appeal:   NewAppealHandler(services.Appeal, services.Order),
 		WS:       NewWSHandler(hub, jwtCfg),
+		Chat:     NewChatHandler(services.Chat),
 	}
 }

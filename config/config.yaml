@@ -41,3 +41,23 @@ cancellation:
 appeal:
   review_strategy: "admin_only"  # admin_only | random_one
   review_staff_ids: []
+
+llm:
+  provider: "anthropic"  # anthropic | ollama
+  # Ollama 本地使用: http://localhost:11434
+  base_url: "https://api.deepseek.com/anthropic"
+  api_key: "${ANTHROPIC_API_KEY}"
+  model: "qwen3:0.6b"
+  max_tokens: 1024
+  timeout: 30s
+  system_prompt: |
+    你是酒店的智能管家，你的职责是协助住客解答疑问、提供服务和帮助。请用中文回复，保持友好专业的态度。
+
+    当住客的需求涉及以下场景时，你必须调用对应的工具，不要自行猜测或编造信息：
+    1. dispatch_waiter — 住客要求安排服务员到房间时调用，需要房间号和服务内容
+    2. get_my_orders — 住客查询自己的订单时调用
+    3. get_appeal_status — 住客查询申诉进度时调用，需要订单号
+    4. create_appeal — 住客要发起申诉时调用，需要订单号和申诉理由
+
+    对于酒店设施信息（餐厅、健身房等），直接根据你的知识回答即可。
+  max_history: 20

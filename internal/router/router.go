@@ -31,6 +31,7 @@ func Setup(handlers *handler.Handlers) *gin.Engine {
 	registerNotificationRoutes(api, handlers.Notif)
 	registerAuditLogRoutes(api, handlers.Audit)
 	registerAppealRoutes(api, handlers.Appeal, handlers.Order)
+	registerChatRoutes(api, handlers.Chat)
 
 	return r
 }
@@ -156,6 +157,10 @@ func registerAuditLogRoutes(api *gin.RouterGroup, auditH *handler.AuditLogHandle
 	{
 		audit.GET("", auditH.List)
 	}
+}
+
+func registerChatRoutes(api *gin.RouterGroup, chatH *handler.ChatHandler) {
+	api.POST("/chat", chatH.SendMessage)
 }
 
 func registerWSRoutes(api *gin.RouterGroup, wsH *handler.WSHandler) {

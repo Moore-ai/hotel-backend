@@ -171,6 +171,11 @@ type CreateAppealRequest struct {
 }
 
 type ReviewAppealRequest struct {
-	Action     string `json:"action" binding:"required"`   // approved | rejected
+	Action     string `json:"action" binding:"required"` // approved | rejected
 	ReviewNote string `json:"review_note"`
+}
+
+type ChatRequest struct {
+	Message        string `json:"message" binding:"required"`
+	ConversationID string `json:"conversation_id"`
 }

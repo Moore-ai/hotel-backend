@@ -124,6 +124,15 @@ func (s *AppealService) FindByID(id uint) (*model.Appeal, error) {
 	return appeal, err
 }
 
+func (s *AppealService) FindByOrderID(orderID uint) (*model.Appeal, error) {
+	appeal, err := s.repo.FindByOrderID(orderID)
+	if err != nil {
+		return nil, err
+	}
+	s.encodeAppeal(appeal)
+	return appeal, nil
+}
+
 func (s *AppealService) FindAll(status string, page, pageSize int) ([]model.Appeal, int64, error) {
 	appeals, total, err := s.repo.FindByStatus(status, page, pageSize)
 	if err == nil {
