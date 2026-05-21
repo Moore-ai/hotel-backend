@@ -341,30 +341,60 @@ appeal:
 
 ## AI 智能管家
 
-AI 智能管家为住客提供自然语言交互入口，通过单一  端点完成酒店信息问答、服务请求、订单查询和申诉处理。
-
-### 对话流程
-
-
-
-
+AI 智能管家为住客提供自然语言交互入口，通过单一 `POST /api/v1/chat` 端点完成酒店信息问答、服务请求、订单查询和申诉处理。
 
 ### 可调用工具
 
 | 工具 | 触发场景 | 功能 |
 |------|---------|------|
-|  | 叫服务员到房间 | 随机派单 + 双方通知 |
-|  | 查订单 | 查询当前用户订单列表 |
-|  | 查申诉进度 | 查询指定订单的申诉状态 |
-|  | 发起申诉 | 对驳回决定提起申诉 |
+| dispatch_waiter | 叫服务员到房间 | 随机派单 + 双方通知 |
+| get_my_orders | 查订单 | 查询当前用户订单列表 |
+| get_appeal_status | 查申诉进度 | 查询指定订单的申诉状态 |
+| create_appeal | 发起申诉 | 对驳回决定提起申诉 |
 
 ### LLM Provider 配置
 
-支持两种 LLM 服务商，通过  切换：
+支持三种 LLM 服务商，通过 `config.yaml` 的 `llm.provider` 切换：
 
+```yaml
+llm:
+  # Anthropic 格式（默认，兼容 DeepSeek 等第三方服务）
+  provider: "anthropic"
+  base_url: "https://api.anthropic.com/v1"
+  api_key: "${LLM_API_KEY}"
+  model: "claude-sonnet-4-20250514"
 
+  # OpenAI 格式
+  # provider: "openai"
+  # base_url: "https://api.openai.com/v1"
+  # model: "gpt-4o"
 
-API Key 优先从系统环境变量读取，其次从项目根目录的  文件读取。
+  # Ollama 本地模型（无需 api_key）
+  # provider: "ollama"
+  # base_url: "http://localhost:11434"
+  # model: "qwen3:0.6b"
+```
+
+API Key 优先从系统环境变量 `LLM_API_KEY` 读取，其次从项目根目录的 `.env` 文件读取。
+
+### 速率限制
+
+AI 对话接口支持速率限制，通过 `llm.rate_limit` 配置：
+
+```yaml
+llm:
+  rate_limit:
+    enabled: true
+    max_requests_per_minute: 10
+    algorithm: fixed_window      # fixed_window | token_bucket | sliding_window
+    whitelist:
+      - 1                       # 跳过限流的用户 ID（默认包含超级管理员）
+```
+
+三种算法：
+- `fixed_window` — 固定窗口，每分钟重置计数器
+- `token_bucket` — 令牌桶，支持突发流量，平滑限流
+- `sliding_window` — 滑动窗口，精确统计过去 1 分钟请求数
 
 ### 注意事项
 
@@ -372,7 +402,6 @@ API Key 优先从系统环境变量读取，其次从项目根目录的  文件�
 - 每个用户同一时间只有一个活跃对话
 - LLM 回答酒店设施信息（退房时间、健身房等）基于模型知识，非实时查询
 - 云端模型（Anthropic/DeepSeek）支持工具调用；小型本地 Ollama 模型可能仅支持文本对话
-
 ## 认证方式
 
 API 采用 JWT Bearer Token 认证，根据角色使用不同登录端点：
