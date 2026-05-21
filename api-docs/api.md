@@ -1168,46 +1168,65 @@ GET /ws?token=<access_token>
 
 服务端每 30 秒发送 Ping 帧，客户端需在 60 秒内回复 Pong 帧，否则连接断开。客户端无需发送消息，只负责接收推送。---
 
+
 ## 十三、AI 智能管家
 
-AI 智能管家为住客提供自然语言交互入口，通过 LLM（大语言模型）理解住客意图并自动调用后端服务。
+AI 智能管家为住客提供自然语言交互入口，通过 LLM 理解住客意图并自动调用后端服务。
 
-支持两种 LLM 服务商，通过  配置切换：
+支持三种 LLM 服务商，通过 `config.yaml` 的 `llm.provider` 配置切换：
 
-- **anthropic**（默认）：使用 Anthropic Messages API，兼容 DeepSeek 等第三方服务
-- **ollama**：使用本地 Ollama 模型
+- **anthropic**（默认）：Anthropic Messages API，兼容 DeepSeek 等第三方服务
+- **openai**：OpenAI Chat Completions API
+- **ollama**：本地 Ollama 模型
 
 ### 13.1 发送对话消息
 
-
+```
+POST /chat
+Authorization: Bearer <token>
+```
 
 **请求体**：
 
-
+```json
+{
+  "message": "帮我查一下我的订单",
+  "conversation_id": "optional-uuid"
+}
+```
 
 | 字段 | 必填 | 说明 |
 |------|------|------|
-|  | ✅ | 用户消息 |
-|  | — | 对话 ID。新对话不传此字段，服务端自动创建并返回；续接对话时传入上次返回的 ID |
+| `message` | ✅ | 用户消息 |
+| `conversation_id` | — | 对话 ID。新对话不传此字段，服务端自动创建并返回；续接对话时传入上次返回的 ID |
 
 **响应**：
 
-
+```json
+{
+  "code": 0,
+  "data": {
+    "reply": "您好，查询到您当前没有订单记录。",
+    "conversation_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "action": "get_my_orders"
+  }
+}
+```
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-|  | string | AI 回复文本 |
-|  | string | 当前对话 ID（续接对话时传入此值） |
-|  | string | 触发的工具名（如 ），未触发工具时为空字符串 |
+| `reply` | string | AI 回复文本 |
+| `conversation_id` | string | 当前对话 ID |
+| `action` | string | 触发的工具名（如 `get_my_orders`），未触发时为空字符串 |
 
 **可调用工具**：
 
 | 工具 | 触发场景 | 功能 |
 |------|---------|------|
-|  | 叫服务员到房间 | 随机派单 + 双方通知 |
-|  | 查订单 | 查询当前用户订单列表 |
-|  | 查申诉进度 | 查询指定订单的申诉状态 |
-|  | 发起申诉 | 对驳回决定提起申诉 |
+| `dispatch_waiter` | 叫服务员到房间 | 随机派单 + 双方通知 |
+| `get_my_orders` | 查订单 | 查询当前用户订单列表 |
+| `get_appeal_status` | 查申诉进度 | 查询指定订单的申诉状态 |
+| `create_appeal` | 发起申诉 | 对驳回决定提起申诉 |
 
 **错误码**：
 
@@ -1215,16 +1234,47 @@ AI 智能管家为住客提供自然语言交互入口，通过 LLM（大语言�
 |------|------|
 | 400 | 请求参数错误（message 为空） |
 | 401 | 未认证 |
+| 429 | 请求过于频繁（速率限制） |
 | 6001 | AI 管家暂时不可用（LLM API 不可达） |
 | 6002 | AI 响应解析失败 |
 
 ### 13.2 对话生命周期
 
-1. 用户发送 （不带 ）
-2. 服务端创建新对话，返回 
-3. 用户续接对话时传入 ，服务端从 Redis 恢复历史（保留最近 20 条，24 小时 TTL）
+1. 用户发送 `POST /chat`（不带 `conversation_id`）
+2. 服务端创建新对话，返回 `conversation_id`
+3. 用户续接对话时传入 `conversation_id`，服务端从 Redis 恢复历史（保留最近 20 条，24 小时 TTL）
 4. 每个用户同时只有一个活跃对话
 
-### 13.3 配置
+### 13.3 速率限制
 
+AI 对话接口支持速率限制，防止单个用户过度调用。支持三种算法：
 
+| 算法 | 说明 |
+|------|------|
+| `fixed_window` | 固定窗口，每分钟重置 |
+| `token_bucket` | 令牌桶，支持突发流量 |
+| `sliding_window` | 滑动窗口，精确统计 |
+
+白名单中的用户 ID 不受限流限制（默认包含超级管理员）。
+
+被限流时返回 HTTP 429，附带 `Retry-After` 响应头指示等待秒数。
+
+### 13.4 配置
+
+```yaml
+llm:
+  provider: "anthropic"  # anthropic | openai | ollama
+  base_url: "https://api.anthropic.com/v1"
+  api_key: "${LLM_API_KEY}"
+  model: "claude-sonnet-4-20250514"
+  max_tokens: 1024
+  timeout: 30s
+  system_prompt: "..."
+  max_history: 20
+  rate_limit:
+    enabled: true
+    max_requests_per_minute: 10
+    algorithm: fixed_window  # fixed_window | token_bucket | sliding_window
+    whitelist:
+      - 1                   # 跳过限流的用户 ID
+```
