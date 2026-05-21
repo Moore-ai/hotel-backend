@@ -149,7 +149,7 @@ func Load(path string) (*Config, error) {
 
 	// 记录 LLM API key 来源
 	keySource := "config.yaml"
-	if _, set := os.LookupEnv("ANTHROPIC_API_KEY"); set {
+	if _, set := os.LookupEnv("LLM_API_KEY"); set {
 		keySource = "system environment"
 	} else if _, set := os.LookupEnv("LLM_API_KEY"); set {
 		keySource = "system environment (LLM_API_KEY)"

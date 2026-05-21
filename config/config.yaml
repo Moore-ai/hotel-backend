@@ -46,7 +46,7 @@ llm:
   provider: anthropic  # anthropic | openai | ollama 
   # Ollama 本地使用: http://localhost:11434
   base_url: "https://api.deepseek.com/anthropic"
-  api_key: "${ANTHROPIC_API_KEY}"
+  api_key: "${LLM_API_KEY}"
   model: "deepseek-v4-flash"
   max_tokens: 1024
   timeout: 30s
