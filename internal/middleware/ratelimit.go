@@ -59,6 +59,10 @@ func ChatRateLimit() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		userID := c.GetUint("user_id")
+		if cfg.IsWhitelisted(userID) {
+			c.Next()
+			return
+		}
 		ok, retryAfter := limiter(c, userID)
 		if !ok {
 			c.Header("Retry-After", strconv.Itoa(retryAfter))

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -83,13 +84,18 @@ type AppealConfig struct {
 }
 
 type RateLimitConfig struct {
-	Enabled bool `mapstructure:"enabled"`
-	MaxRequestsPerMinute  int  `mapstructure:"max_requests_per_minute"`
-	Algorithm             string `mapstructure:"algorithm"`
+	Enabled              bool   `mapstructure:"enabled"`
+	MaxRequestsPerMinute int    `mapstructure:"max_requests_per_minute"`
+	Algorithm            string `mapstructure:"algorithm"`
+	Whitelist            []uint `mapstructure:"whitelist"`
+}
+
+func (c *RateLimitConfig) IsWhitelisted(userID uint) bool {
+	return slices.Contains(c.Whitelist, userID)
 }
 
 type LLMConfig struct {
-	Provider     string          `mapstructure:"provider"`      // anthropic | ollama
+	Provider     string          `mapstructure:"provider"` // anthropic | ollama
 	BaseURL      string          `mapstructure:"base_url"`
 	APIKey       string          `mapstructure:"api_key"`
 	Model        string          `mapstructure:"model"`

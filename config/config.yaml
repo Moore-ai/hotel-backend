@@ -65,3 +65,5 @@ llm:
     enabled: true
     max_requests_per_minute: 5
     algorithm: fixed_window      # fixed_window | sliding_window | token_bucket
+    whitelist:
+      - 1
