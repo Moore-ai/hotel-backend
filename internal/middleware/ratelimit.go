@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"hotel-backend/config"
@@ -23,13 +24,14 @@ const (
 	rateLimitSlidingWindow = "sliding_window"
 )
 
-var chatRateLimitCfg *config.RateLimitConfig
+var (
+	chatRateLimitCfg     *config.RateLimitConfig
+	tokenBucketScript    = redis.NewScript(tokenBucketScriptSrc)
+)
 
 func InitChatRateLimit(cfg *config.RateLimitConfig) {
 	chatRateLimitCfg = cfg
 }
-
-var tokenBucketScript = redis.NewScript(tokenBucketScriptSrc)
 
 func ChatRateLimit() gin.HandlerFunc {
 	cfg := chatRateLimitCfg
@@ -42,7 +44,7 @@ func ChatRateLimit() gin.HandlerFunc {
 		rpm = 10
 	}
 
-	var limiter func(ctx *gin.Context, userID uint) bool
+	var limiter func(ctx *gin.Context, userID uint) (ok bool, retryAfter int)
 	switch cfg.Algorithm {
 	case rateLimitTokenBucket:
 		limiter = tokenBucket(rpm)
@@ -57,7 +59,9 @@ func ChatRateLimit() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		userID := c.GetUint("user_id")
-		if !limiter(c, userID) {
+		ok, retryAfter := limiter(c, userID)
+		if !ok {
+			c.Header("Retry-After", strconv.Itoa(retryAfter))
 			errcode.Write(c, errcode.ErrRateLimited)
 			c.Abort()
 			return
@@ -66,8 +70,8 @@ func ChatRateLimit() gin.HandlerFunc {
 	}
 }
 
-func fixedWindow(rpm int) func(*gin.Context, uint) bool {
-	return func(c *gin.Context, userID uint) bool {
+func fixedWindow(rpm int) func(*gin.Context, uint) (bool, int) {
+	return func(c *gin.Context, userID uint) (bool, int) {
 		key := fmt.Sprintf("ratelimit:fw:%d", userID)
 		ctx := c.Request.Context()
 
@@ -77,14 +81,19 @@ func fixedWindow(rpm int) func(*gin.Context, uint) bool {
 		_, err := pipe.Exec(ctx)
 		if err != nil {
 			log.Printf("Rate limit (fixed window) failed: %v", err)
-			return true
+			return true, 0
 		}
-		return incr.Val() <= int64(rpm)
+
+		if incr.Val() > int64(rpm) {
+			ttl, _ := database.RDB.TTL(ctx, key).Result()
+			return false, int(ttl.Seconds())
+		}
+		return true, 0
 	}
 }
 
-func tokenBucket(rpm int) func(*gin.Context, uint) bool {
-	return func(c *gin.Context, userID uint) bool {
+func tokenBucket(rpm int) func(*gin.Context, uint) (bool, int) {
+	return func(c *gin.Context, userID uint) (bool, int) {
 		key := fmt.Sprintf("ratelimit:tb:%d", userID)
 		tsKey := key + ":ts"
 		ctx := c.Request.Context()
@@ -93,14 +102,19 @@ func tokenBucket(rpm int) func(*gin.Context, uint) bool {
 			time.Now().UnixMilli(), rpm, 60000).Int()
 		if err != nil {
 			log.Printf("Rate limit (token bucket) failed: %v", err)
-			return true
+			return true, 0
 		}
-		return ret == 1
+
+		if ret != 1 {
+			ttl, _ := database.RDB.TTL(ctx, key).Result()
+			return false, max(int(ttl.Seconds()), 1)
+		}
+		return true, 0
 	}
 }
 
-func slidingWindow(rpm int) func(*gin.Context, uint) bool {
-	return func(c *gin.Context, userID uint) bool {
+func slidingWindow(rpm int) func(*gin.Context, uint) (bool, int) {
+	return func(c *gin.Context, userID uint) (bool, int) {
 		key := fmt.Sprintf("ratelimit:sw:%d", userID)
 		ctx := c.Request.Context()
 		now := time.Now().UnixMilli()
@@ -114,9 +128,13 @@ func slidingWindow(rpm int) func(*gin.Context, uint) bool {
 		_, err := pipe.Exec(ctx)
 		if err != nil {
 			log.Printf("Rate limit (sliding window) failed: %v", err)
-			return true
+			return true, 0
 		}
 
-		return zcard.Val() <= int64(rpm)
+		if zcard.Val() > int64(rpm) {
+			ttl, _ := database.RDB.TTL(ctx, key).Result()
+			return false, int(ttl.Seconds())
+		}
+		return true, 0
 	}
 }

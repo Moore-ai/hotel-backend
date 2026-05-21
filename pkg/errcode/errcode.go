@@ -79,6 +79,8 @@ func Write(c *gin.Context, code int) {
 		httpStatus = 404
 	case ErrInternal:
 		httpStatus = 500
+	case ErrRateLimited:
+		httpStatus = 429
 	}
 	c.JSON(httpStatus, gin.H{"code": code, "message": Message(code)})
 }
