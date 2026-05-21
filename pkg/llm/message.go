@@ -7,6 +7,7 @@ const (
 	RoleUser      = "user"
 	RoleAssistant = "assistant"
 	RoleSystem    = "system"
+	RoleTool      = "tool"
 )
 
 // Content block types (Anthropic content blocks)
@@ -14,7 +15,7 @@ const (
 	ContentTypeText       = "text"
 	ContentTypeToolUse    = "tool_use"
 	ContentTypeToolResult = "tool_result"
-	ContentTypeThinking  = "thinking"
+	ContentTypeThinking   = "thinking"
 )
 
 // StopReason values

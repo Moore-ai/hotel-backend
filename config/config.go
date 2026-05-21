@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -82,15 +83,27 @@ type AppealConfig struct {
 	ReviewStaffIDs []uint `mapstructure:"review_staff_ids"`
 }
 
+type RateLimitConfig struct {
+	Enabled              bool   `mapstructure:"enabled"`
+	MaxRequestsPerMinute int    `mapstructure:"max_requests_per_minute"`
+	Algorithm            string `mapstructure:"algorithm"`
+	Whitelist            []uint `mapstructure:"whitelist"`
+}
+
+func (c *RateLimitConfig) IsWhitelisted(userID uint) bool {
+	return slices.Contains(c.Whitelist, userID)
+}
+
 type LLMConfig struct {
-	Provider     string        `mapstructure:"provider"`      // anthropic | ollama
-	BaseURL      string        `mapstructure:"base_url"`
-	APIKey       string        `mapstructure:"api_key"`
-	Model        string        `mapstructure:"model"`
-	MaxTokens    int           `mapstructure:"max_tokens"`
-	Timeout      time.Duration `mapstructure:"timeout"`
-	SystemPrompt string        `mapstructure:"system_prompt"`
-	MaxHistory   int           `mapstructure:"max_history"`
+	Provider     string          `mapstructure:"provider"` // anthropic | ollama
+	BaseURL      string          `mapstructure:"base_url"`
+	APIKey       string          `mapstructure:"api_key"`
+	Model        string          `mapstructure:"model"`
+	MaxTokens    int             `mapstructure:"max_tokens"`
+	Timeout      time.Duration   `mapstructure:"timeout"`
+	SystemPrompt string          `mapstructure:"system_prompt"`
+	MaxHistory   int             `mapstructure:"max_history"`
+	RateLimit    RateLimitConfig `mapstructure:"rate_limit"`
 }
 
 // 读取 .env 文件并设置到环境变量（不覆盖已存在的系统环境变量）
@@ -142,7 +155,7 @@ func Load(path string) (*Config, error) {
 
 	// 记录 LLM API key 来源
 	keySource := "config.yaml"
-	if _, set := os.LookupEnv("ANTHROPIC_API_KEY"); set {
+	if _, set := os.LookupEnv("LLM_API_KEY"); set {
 		keySource = "system environment"
 	} else if _, set := os.LookupEnv("LLM_API_KEY"); set {
 		keySource = "system environment (LLM_API_KEY)"

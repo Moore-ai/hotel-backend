@@ -34,7 +34,7 @@ func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *H
 	waiterSvc := NewWaiterService(repos.Waiter, notifSvc, audit, db)
 	orderSvc := NewOrderService(repos.Order, repos.Room, repos.User, allocator, audit, notifSvc, db, cancellationCfg.CutoffHours, obfKey, cancellationCfg.DefaultRejectReason, cancellationCfg.NotifyStrategy, cancellationCfg.NotifyStaffIDs)
 	appealSvc := NewAppealService(repos.Appeal, repos.Order, repos.Room, repos.User, notifSvc, audit, db, appealCfg.ReviewStrategy, appealCfg.ReviewStaffIDs, obfKey)
-	llmClientCfg := llm.Config{
+	llmProviderCfg := llm.Config{
 		Provider:  llmCfg.Provider,
 		BaseURL:   llmCfg.BaseURL,
 		APIKey:    llmCfg.APIKey,
@@ -42,7 +42,7 @@ func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *H
 		MaxTokens: llmCfg.MaxTokens,
 		Timeout:   llmCfg.Timeout,
 	}
-	llmClient := llm.NewClient(llmClientCfg)
+	llmProvider := llm.NewProvider(llmProviderCfg)
 	return &Services{
 		Auth:     NewAuthService(repos.User, repos.Guest, repos.Employee, repos.Admin, repos.Waiter, user, jwtCfg),
 		User:     user,
@@ -56,6 +56,6 @@ func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *H
 		Notif:    notifSvc,
 		Audit:    audit,
 		Appeal:   appealSvc,
-		Chat:     NewChatService(llmClient, llmCfg.SystemPrompt, llmCfg.MaxHistory, waiterSvc, orderSvc, appealSvc),
+		Chat:     NewChatService(llmProvider, llmCfg.SystemPrompt, llmCfg.MaxHistory, waiterSvc, orderSvc, appealSvc),
 	}
 }

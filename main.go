@@ -20,6 +20,7 @@ func main() {
 	}
 
 	middleware.JWTSecret = cfg.JWT.Secret
+	middleware.InitChatRateLimit(&cfg.LLM.RateLimit)
 
 	hub := service.NewHub()
 	go hub.Run()

@@ -160,7 +160,7 @@ func registerAuditLogRoutes(api *gin.RouterGroup, auditH *handler.AuditLogHandle
 }
 
 func registerChatRoutes(api *gin.RouterGroup, chatH *handler.ChatHandler) {
-	api.POST("/chat", chatH.SendMessage)
+	api.POST("/chat", middleware.ChatRateLimit(), chatH.SendMessage)
 }
 
 func registerWSRoutes(api *gin.RouterGroup, wsH *handler.WSHandler) {

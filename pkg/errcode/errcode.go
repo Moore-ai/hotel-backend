@@ -28,6 +28,7 @@ const (
 	ErrAlreadyCheckedOut  = 5002
 	ErrLLMUnavailable     = 6001
 	ErrLLMInvalidResp     = 6002
+	ErrRateLimited        = 6003
 )
 
 var messages = map[int]string{
@@ -55,6 +56,7 @@ var messages = map[int]string{
 	ErrAlreadyCheckedOut:   "already checked out",
 	ErrLLMUnavailable:     "AI 管家暂时不可用，请稍后再试",
 	ErrLLMInvalidResp:     "AI 响应解析失败，请重试",
+	ErrRateLimited:        "请求过于频繁，请稍后再试",
 }
 
 func Message(code int) string {
@@ -77,6 +79,8 @@ func Write(c *gin.Context, code int) {
 		httpStatus = 404
 	case ErrInternal:
 		httpStatus = 500
+	case ErrRateLimited:
+		httpStatus = 429
 	}
 	c.JSON(httpStatus, gin.H{"code": code, "message": Message(code)})
 }
