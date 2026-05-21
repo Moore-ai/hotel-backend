@@ -85,6 +85,7 @@ type AppealConfig struct {
 type RateLimitConfig struct {
 	Enabled bool `mapstructure:"enabled"`
 	MaxRequestsPerMinute  int  `mapstructure:"max_requests_per_minute"`
+	Algorithm             string `mapstructure:"algorithm"`
 }
 
 type LLMConfig struct {

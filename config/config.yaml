@@ -30,20 +30,20 @@ admin:
   name: "超级管理员"
 
 allocation:
-  strategy: "low_floor" # low_floor, high_floor
+  strategy: low_floor # low_floor, high_floor
 
 cancellation:
   cutoff_hours: 24  # CANCELLATION_CUTOFF_HOURS
   default_reject_reason: "无"
-  notify_strategy: "random_one"  # staff_and_admin | all_staff | random_one
+  notify_strategy: random_one  # staff_and_admin | all_staff | random_one
   notify_staff_ids: []
 
 appeal:
-  review_strategy: "admin_only"  # admin_only | random_one
+  review_strategy: admin_only  # admin_only | random_one
   review_staff_ids: []
 
 llm:
-  provider: "anthropic"  # anthropic | openai | ollama 
+  provider: anthropic  # anthropic | openai | ollama 
   # Ollama 本地使用: http://localhost:11434
   base_url: "https://api.deepseek.com/anthropic"
   api_key: "${ANTHROPIC_API_KEY}"
@@ -64,3 +64,4 @@ llm:
   rate_limit:
     enabled: true
     max_requests_per_minute: 5
+    algorithm: fixed_window      # fixed_window | sliding_window | token_bucket
