@@ -61,3 +61,6 @@ llm:
 
     对于酒店设施信息（餐厅、健身房等），直接根据你的知识回答即可。
   max_history: 20
+  rate_limit:
+    enabled: true
+    max_requests_per_minute: 5

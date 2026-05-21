@@ -82,15 +82,21 @@ type AppealConfig struct {
 	ReviewStaffIDs []uint `mapstructure:"review_staff_ids"`
 }
 
+type RateLimitConfig struct {
+	Enabled bool `mapstructure:"enabled"`
+	MaxRequestsPerMinute  int  `mapstructure:"max_requests_per_minute"`
+}
+
 type LLMConfig struct {
-	Provider     string        `mapstructure:"provider"`      // anthropic | ollama
-	BaseURL      string        `mapstructure:"base_url"`
-	APIKey       string        `mapstructure:"api_key"`
-	Model        string        `mapstructure:"model"`
-	MaxTokens    int           `mapstructure:"max_tokens"`
-	Timeout      time.Duration `mapstructure:"timeout"`
-	SystemPrompt string        `mapstructure:"system_prompt"`
-	MaxHistory   int           `mapstructure:"max_history"`
+	Provider     string          `mapstructure:"provider"`      // anthropic | ollama
+	BaseURL      string          `mapstructure:"base_url"`
+	APIKey       string          `mapstructure:"api_key"`
+	Model        string          `mapstructure:"model"`
+	MaxTokens    int             `mapstructure:"max_tokens"`
+	Timeout      time.Duration   `mapstructure:"timeout"`
+	SystemPrompt string          `mapstructure:"system_prompt"`
+	MaxHistory   int             `mapstructure:"max_history"`
+	RateLimit    RateLimitConfig `mapstructure:"rate_limit"`
 }
 
 // 读取 .env 文件并设置到环境变量（不覆盖已存在的系统环境变量）
