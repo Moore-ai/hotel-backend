@@ -6,23 +6,22 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 )
 
-// OllamaClient 是与 Ollama API 通信的客户端
-type OllamaClient struct {
+// OllamaProvider 是与 Ollama API 通信的客户端
+type OllamaProvider struct {
 	config Config
 	http   *http.Client
 }
 
-// NewOllamaClient 创建 Ollama 客户端
-func NewOllamaClient(cfg Config) *OllamaClient {
+// NewOllamaProvider 创建 Ollama 客户端
+func NewOllamaProvider(cfg Config) *OllamaProvider {
 	timeout := cfg.Timeout
 	if timeout == 0 {
 		timeout = 120 * time.Second
 	}
-	return &OllamaClient{
+	return &OllamaProvider{
 		config: cfg,
 		http:   &http.Client{Timeout: timeout},
 	}
@@ -43,7 +42,7 @@ type ollamaResponse struct {
 }
 
 // Chat 发送消息到 Ollama API 并返回结果
-func (c *OllamaClient) Chat(systemPrompt string, messages []Message, tools []ToolDef) (*ChatResult, error) {
+func (c *OllamaProvider) Chat(systemPrompt string, messages []Message, tools []ToolDef) (*ChatResult, error) {
 	if c.config.BaseURL == "" {
 		return nopResult(), nil
 	}
@@ -108,26 +107,6 @@ func (c *OllamaClient) Chat(systemPrompt string, messages []Message, tools []Too
 
 // extractText 从 Message 的 content blocks 中提取文本内容
 func extractText(msg Message) string {
-	var blocks []ContentBlock
-	if err := json.Unmarshal(msg.Content, &blocks); err != nil {
-		return ""
-	}
-	var parts []string
-	for _, b := range blocks {
-		if b.Type == ContentTypeText && b.Text != "" {
-			parts = append(parts, b.Text)
-		}
-		if b.Type == ContentTypeToolResult && b.Content != "" {
-			parts = append(parts, b.Content)
-		}
-	}
-	if len(parts) == 0 {
-		return ""
-	}
-	var out strings.Builder
-	out.WriteString(parts[0])
-	for _, p := range parts[1:] {
-		out.WriteString("\n" + p)
-	}
-	return out.String()
+	text, _ := extractContent(msg)
+	return text
 }

@@ -7,9 +7,9 @@ import (
 
 func TestNopMode(t *testing.T) {
 	cfg := Config{BaseURL: "", Model: "test-model", MaxTokens: 100}
-	client := NewAnthropicClient(cfg)
+	p := NewProvider(cfg)
 
-	result, err := client.Chat("system prompt", nil, nil)
+	result, err := p.Chat("system prompt", nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
