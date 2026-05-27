@@ -150,6 +150,8 @@ func registerAppealRoutes(api *gin.RouterGroup, appealH *handler.AppealHandler, 
 		appeals.GET("", appealH.List)
 		appeals.POST("/:code/review", appealH.Review)
 	}
+
+	api.GET("/appeals/my", appealH.ListMine)
 }
 
 func registerAuditLogRoutes(api *gin.RouterGroup, auditH *handler.AuditLogHandler) {

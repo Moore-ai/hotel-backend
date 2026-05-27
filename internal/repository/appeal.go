@@ -49,6 +49,19 @@ func (r *AppealRepo) FindByStatus(status string, page, pageSize int) ([]model.Ap
 	return list, total, err
 }
 
+func (r *AppealRepo) FindByUserID(userID uint, status string, page, pageSize int) ([]model.Appeal, int64, error) {
+	var list []model.Appeal
+	var total int64
+	query := r.db.Model(&model.Appeal{}).Where("user_id = ?", userID).Preload("Order").Preload("User").Preload("Reviewer")
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	query.Count(&total)
+	err := query.Offset((page - 1) * pageSize).Limit(pageSize).
+		Order("created_at DESC").Find(&list).Error
+	return list, total, err
+}
+
 func (r *AppealRepo) Update(a *model.Appeal) error {
 	return r.db.Save(a).Error
 }
