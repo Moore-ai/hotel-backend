@@ -96,6 +96,10 @@ func (h *OrderHandler) Update(c *gin.Context) {
 	}
 	order, err := h.orderService.Update(id, req.CheckInDate, req.CheckOutDate, req.Status, req.TotalPrice)
 	if err != nil {
+		if errors.Is(err, service.ErrRoomStatusConflict) {
+			dto.Error(c, errcode.ErrConflict)
+			return
+		}
 		dto.Error(c, errcode.ErrOrderNotFound)
 		return
 	}

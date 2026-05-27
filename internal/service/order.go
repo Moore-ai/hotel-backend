@@ -108,7 +108,7 @@ func releaseRoomForCancellation(roomRepo *repository.RoomRepo, roomID uint) erro
 	}
 	room, err := roomRepo.FindByID(roomID)
 	if err != nil {
-		return err
+		return ErrRoomStatusConflict
 	}
 	return validateReleasedRoomStatus(room.Status)
 }
@@ -427,12 +427,8 @@ func (s *OrderService) Cancel(id, userID uint, reason string) (*model.Order, boo
 	}
 
 	if immediateCancel {
-		ok, err := roomRepo.UpdateStatusIf(order.RoomID, model.RoomStatusReserved, model.RoomStatusVacant)
-		if err != nil {
+		if err := releaseRoomForCancellation(roomRepo, order.RoomID); err != nil {
 			return nil, false, err
-		}
-		if !ok {
-			return nil, false, ErrRoomStatusConflict
 		}
 	}
 	order.Status = targetStatus
@@ -530,12 +526,8 @@ func (s *OrderService) Delete(id uint) error {
 
 	// 非已取消状态需要释放房间
 	if order.Status != model.OrderStatusCancelled {
-		ok, err := roomRepo.UpdateStatusIf(order.RoomID, model.RoomStatusReserved, model.RoomStatusVacant)
-		if err != nil {
+		if err := releaseRoomForCancellation(roomRepo, order.RoomID); err != nil {
 			return err
-		}
-		if !ok {
-			return ErrRoomStatusConflict
 		}
 	}
 

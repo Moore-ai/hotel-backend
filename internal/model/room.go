@@ -11,7 +11,6 @@ const (
 const (
 	CheckinStatusActive    = "active"
 	CheckinStatusCompleted = "completed"
-	CheckinStatusCancelled = "cancelled"
 )
 
 type Room struct {
