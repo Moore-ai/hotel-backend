@@ -3,5 +3,6 @@
 *.md
 !api-docs/*.md
 hotel-backend.exe
+hotel-backend
 
 !README.md
