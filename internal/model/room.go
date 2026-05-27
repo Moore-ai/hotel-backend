@@ -9,8 +9,8 @@ const (
 )
 
 const (
-	CheckinStatusActive     = "active"
-	CheckinStatusCompleted  = "completed"
+	CheckinStatusActive    = "active"
+	CheckinStatusCompleted = "completed"
 )
 
 type Room struct {

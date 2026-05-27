@@ -38,6 +38,8 @@ func Error(c *gin.Context, code int) {
 		httpStatus = http.StatusUnauthorized
 	case errcode.ErrForbidden:
 		httpStatus = http.StatusForbidden
+	case errcode.ErrConflict:
+		httpStatus = http.StatusConflict
 	case errcode.ErrNotFound:
 		httpStatus = http.StatusNotFound
 	case errcode.ErrInternal:
