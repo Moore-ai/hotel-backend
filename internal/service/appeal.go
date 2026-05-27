@@ -141,6 +141,14 @@ func (s *AppealService) FindAll(status string, page, pageSize int) ([]model.Appe
 	return appeals, total, err
 }
 
+func (s *AppealService) FindByUserID(userID uint, status string, page, pageSize int) ([]model.Appeal, int64, error) {
+	appeals, total, err := s.repo.FindByUserID(userID, status, page, pageSize)
+	if err == nil {
+		s.encodeAppeals(appeals)
+	}
+	return appeals, total, err
+}
+
 func (s *AppealService) Review(id, reviewerID uint, action, reviewNote string) (*model.Appeal, error) {
 	tx := s.db.Begin()
 	if tx.Error != nil {

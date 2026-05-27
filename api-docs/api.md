@@ -998,7 +998,7 @@ Authorization: Bearer <token>
 
 ---
 
-## 十一、申诉（员工/管理员）
+## 十一、申诉
 
 驳回客户取消申请后，客户可选择申诉。工作人员审核申诉（通过/驳回），结果通知客户。
 
@@ -1007,6 +1007,8 @@ Authorization: Bearer <token>
 - `random_one`：随机分配给指定工作人员（`appeal.review_staff_ids`），未配置时覆盖全体员工
 
 ### 11.1 提交申诉（住户）
+
+仅限 `guest` 角色，只能对自己的订单提交申诉。
 
 ```
 POST /orders/:code/appeal
@@ -1052,7 +1054,22 @@ Authorization: Bearer <token>
 | 404 | 订单不存在 |
 | 4005 | 该订单已有进行中的申诉（ErrAppealExists） |
 
-### 11.2 查看申诉列表
+### 11.2 查看我的申诉（住户）
+
+所有登录用户均可访问，返回当前用户自己的申诉记录。
+
+```
+GET /appeals/my?status=pending&page=1&page_size=20
+Authorization: Bearer <token>
+```
+
+| 参数 | 说明 |
+|------|------|
+| `status` | 筛选状态：pending / approved / rejected，为空返回全部 |
+
+### 11.3 查看全部申诉（员工/管理员）
+
+仅限 `employee` 或 `admin` 角色，返回系统中所有申诉记录。
 
 ```
 GET /appeals?status=pending&page=1&page_size=20
