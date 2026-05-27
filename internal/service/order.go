@@ -91,6 +91,28 @@ func validateOrderUpdateStatus(oldStatus, newStatus string) error {
 	return nil
 }
 
+func validateReleasedRoomStatus(status string) error {
+	if status == model.RoomStatusVacant {
+		return nil
+	}
+	return ErrRoomStatusConflict
+}
+
+func releaseRoomForCancellation(roomRepo *repository.RoomRepo, roomID uint) error {
+	ok, err := roomRepo.UpdateStatusIf(roomID, model.RoomStatusReserved, model.RoomStatusVacant)
+	if err != nil {
+		return err
+	}
+	if ok {
+		return nil
+	}
+	room, err := roomRepo.FindByID(roomID)
+	if err != nil {
+		return err
+	}
+	return validateReleasedRoomStatus(room.Status)
+}
+
 func (s *OrderService) Create(userID uint, roomID *uint, checkIn, checkOut string, price float64, guestCount int, roomType string) (*model.Order, error) {
 	tx := s.db.Begin()
 	if tx.Error != nil {
@@ -204,12 +226,8 @@ func (s *OrderService) Update(id uint, checkIn, checkOut, status string, price f
 				return nil, fmt.Errorf("invalid status transition from cancel_requested to %s", status)
 			}
 			if status == model.OrderStatusCancelled {
-				ok, rErr := roomRepo.UpdateStatusIf(order.RoomID, model.RoomStatusReserved, model.RoomStatusVacant)
-				if rErr != nil {
-					return nil, rErr
-				}
-				if !ok {
-					return nil, ErrRoomStatusConflict
+				if err := releaseRoomForCancellation(roomRepo, order.RoomID); err != nil {
+					return nil, err
 				}
 				if _, err := s.notifSvc.Create(order.UserID, "cancel_approved", "取消申请已通过",
 					fmt.Sprintf("您的订单 #%d 取消申请已通过，房间已释放。", order.ID)); err != nil {
@@ -312,12 +330,8 @@ func (s *OrderService) ApproveCancel(id uint) (*model.Order, error) {
 	}
 
 	oldOrder := *order
-	ok, err := roomRepo.UpdateStatusIf(order.RoomID, model.RoomStatusReserved, model.RoomStatusVacant)
-	if err != nil {
+	if err := releaseRoomForCancellation(roomRepo, order.RoomID); err != nil {
 		return nil, err
-	}
-	if !ok {
-		return nil, ErrRoomStatusConflict
 	}
 
 	order.Status = model.OrderStatusCancelled

@@ -108,3 +108,35 @@ func TestValidateOrderUpdateStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateReleasedRoomStatus(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  string
+		wantErr error
+	}{
+		{
+			name:   "already vacant room is an acceptable cancellation target state",
+			status: model.RoomStatusVacant,
+		},
+		{
+			name:    "occupied room is still a cancellation conflict",
+			status:  model.RoomStatusOccupied,
+			wantErr: ErrRoomStatusConflict,
+		},
+		{
+			name:    "reserved room should have been updated before validation",
+			status:  model.RoomStatusReserved,
+			wantErr: ErrRoomStatusConflict,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotErr := validateReleasedRoomStatus(tt.status)
+			if gotErr != tt.wantErr {
+				t.Fatalf("error = %v, want %v", gotErr, tt.wantErr)
+			}
+		})
+	}
+}
