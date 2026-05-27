@@ -135,6 +135,24 @@ func (h *OrderHandler) RejectCancel(c *gin.Context) {
 	dto.Success(c, order)
 }
 
+func (h *OrderHandler) ApproveCancel(c *gin.Context) {
+	id, err := h.orderService.DecodeCode(c.Param("code"))
+	if err != nil {
+		dto.Error(c, errcode.ErrNotFound)
+		return
+	}
+	order, err := h.orderService.ApproveCancel(id)
+	if err != nil {
+		if errors.Is(err, service.ErrOrderNotCancelRequested) {
+			dto.Error(c, errcode.ErrBadRequest)
+			return
+		}
+		dto.Error(c, errcode.ErrOrderNotFound)
+		return
+	}
+	dto.Success(c, order)
+}
+
 func (h *OrderHandler) Confirm(c *gin.Context) {
 	id, err := h.orderService.DecodeCode(c.Param("code"))
 	if err != nil {

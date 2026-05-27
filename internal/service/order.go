@@ -21,6 +21,7 @@ var ErrOrderNotPending = errors.New("order is not in pending status")
 var ErrOrderNotCancelRequested = errors.New("order is not in cancel_requested status")
 var ErrRoomStatusConflict = errors.New("room status conflict during cancellation")
 var ErrPastCheckIn = errors.New("cannot cancel an order past check-in date")
+var ErrInvalidOrderStatusTransition = errors.New("invalid order status transition")
 
 type OrderService struct {
 	repo                *repository.OrderRepo
@@ -58,6 +59,36 @@ func (s *OrderService) encodeOrders(orders []model.Order) {
 	for i := range orders {
 		s.encodeOrder(&orders[i])
 	}
+}
+
+func cancelTargetForStatus(status string) (string, bool, error) {
+	switch status {
+	case model.OrderStatusPending:
+		return model.OrderStatusCancelled, true, nil
+	case model.OrderStatusConfirmed:
+		return model.OrderStatusCancelRequested, false, nil
+	default:
+		return "", false, ErrOrderNotPending
+	}
+}
+
+func validateOrderUpdateStatus(oldStatus, newStatus string) error {
+	if newStatus == "" || oldStatus == newStatus {
+		return nil
+	}
+	if newStatus == model.OrderStatusCancelRequested {
+		return ErrInvalidOrderStatusTransition
+	}
+	if oldStatus == model.OrderStatusCancelRequested {
+		if newStatus == model.OrderStatusCancelled || newStatus == model.OrderStatusConfirmed {
+			return nil
+		}
+		return fmt.Errorf("invalid status transition from cancel_requested to %s", newStatus)
+	}
+	if newStatus == model.OrderStatusCancelled {
+		return ErrInvalidOrderStatusTransition
+	}
+	return nil
 }
 
 func (s *OrderService) Create(userID uint, roomID *uint, checkIn, checkOut string, price float64, guestCount int, roomType string) (*model.Order, error) {
@@ -165,8 +196,11 @@ func (s *OrderService) Update(id uint, checkIn, checkOut, status string, price f
 		order.CheckOutDate = checkOut
 	}
 	if status != "" {
+		if err := validateOrderUpdateStatus(oldOrder.Status, status); err != nil {
+			return nil, err
+		}
 		if oldOrder.Status == model.OrderStatusCancelRequested {
-			if status != model.OrderStatusCancelled && status != model.OrderStatusPending {
+			if status != model.OrderStatusCancelled && status != model.OrderStatusConfirmed {
 				return nil, fmt.Errorf("invalid status transition from cancel_requested to %s", status)
 			}
 			if status == model.OrderStatusCancelled {
@@ -234,7 +268,7 @@ func (s *OrderService) RejectCancel(id uint, reason string) (*model.Order, error
 		return nil, ErrOrderNotCancelRequested
 	}
 
-	order.Status = model.OrderStatusPending
+	order.Status = model.OrderStatusConfirmed
 	if err := orderRepo.Update(order); err != nil {
 		return nil, err
 	}
@@ -252,6 +286,55 @@ func (s *OrderService) RejectCancel(id uint, reason string) (*model.Order, error
 	}
 
 	if err := s.auditLog.Log(0, "rejected_cancel", "order", order.ID, nil, order, "驳回取消申请"); err != nil {
+		log.Printf("Audit log failed for order %d: %v", order.ID, err)
+	}
+
+	s.encodeOrder(order)
+	return order, nil
+}
+
+func (s *OrderService) ApproveCancel(id uint) (*model.Order, error) {
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	defer tx.Rollback()
+
+	orderRepo := s.repo.WithTx(tx)
+	roomRepo := s.roomRepo.WithTx(tx)
+
+	order, err := orderRepo.FindByIDForUpdate(tx, id)
+	if err != nil {
+		return nil, err
+	}
+	if order.Status != model.OrderStatusCancelRequested {
+		return nil, ErrOrderNotCancelRequested
+	}
+
+	oldOrder := *order
+	ok, err := roomRepo.UpdateStatusIf(order.RoomID, model.RoomStatusReserved, model.RoomStatusVacant)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrRoomStatusConflict
+	}
+
+	order.Status = model.OrderStatusCancelled
+	if err := orderRepo.Update(order); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
+	}
+
+	if _, err := s.notifSvc.Create(order.UserID, "cancel_approved", "Cancel request approved",
+		fmt.Sprintf("Your order #%d cancellation request was approved.", order.ID)); err != nil {
+		log.Printf("Notification failed for order %d: %v", order.ID, err)
+	}
+
+	if err := s.auditLog.Log(0, "cancelled", "order", order.ID, &oldOrder, order, "approve cancel request"); err != nil {
 		log.Printf("Audit log failed for order %d: %v", order.ID, err)
 	}
 
@@ -310,10 +393,6 @@ func (s *OrderService) Cancel(id, userID uint, reason string) (*model.Order, boo
 	if order.UserID != userID {
 		return nil, false, ErrOrderNotBelongToUser
 	}
-	if order.Status != model.OrderStatusPending {
-		return nil, false, ErrOrderNotPending
-	}
-
 	order.CancelReason = reason
 
 	checkInTime, err := time.Parse("2006-01-02", order.CheckInDate)
@@ -327,11 +406,13 @@ func (s *OrderService) Cancel(id, userID uint, reason string) (*model.Order, boo
 		return nil, false, ErrPastCheckIn
 	}
 
-	// 时间层面的检查：距入住的实际小时数决定自动取消还是审核
-	hoursUntilCheckIn := time.Until(checkInTime).Hours()
-	autoCancel := hoursUntilCheckIn > float64(s.cutoffHours)
+	// Order status decides whether cancellation is immediate or enters review.
+	targetStatus, immediateCancel, err := cancelTargetForStatus(order.Status)
+	if err != nil {
+		return nil, false, err
+	}
 
-	if autoCancel {
+	if immediateCancel {
 		ok, err := roomRepo.UpdateStatusIf(order.RoomID, model.RoomStatusReserved, model.RoomStatusVacant)
 		if err != nil {
 			return nil, false, err
@@ -339,10 +420,8 @@ func (s *OrderService) Cancel(id, userID uint, reason string) (*model.Order, boo
 		if !ok {
 			return nil, false, ErrRoomStatusConflict
 		}
-		order.Status = model.OrderStatusCancelled
-	} else {
-		order.Status = model.OrderStatusCancelRequested
 	}
+	order.Status = targetStatus
 
 	if err := orderRepo.Update(order); err != nil {
 		return nil, false, err
@@ -356,7 +435,7 @@ func (s *OrderService) Cancel(id, userID uint, reason string) (*model.Order, boo
 		log.Printf("Audit log failed for order %d: %v", order.ID, err)
 	}
 
-	if autoCancel {
+	if immediateCancel {
 		if _, err := s.notifSvc.Create(userID, "order_cancelled", "订单已取消",
 			fmt.Sprintf("您的订单 #%d 已自动取消。原因：%s", order.ID, reason)); err != nil {
 			log.Printf("Notification failed for order %d: %v", order.ID, err)
@@ -366,7 +445,7 @@ func (s *OrderService) Cancel(id, userID uint, reason string) (*model.Order, boo
 	}
 
 	s.encodeOrder(order)
-	return order, autoCancel, nil
+	return order, immediateCancel, nil
 }
 
 func (s *OrderService) FindCancelRequests(page, pageSize int) ([]model.Order, int64, error) {
