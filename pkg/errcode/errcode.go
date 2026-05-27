@@ -38,7 +38,7 @@ var messages = map[int]string{
 	ErrUnauthorized:        "unauthorized",
 	ErrForbidden:           "forbidden",
 	ErrNotFound:            "not found",
-	ErrConflict:            "conflict",
+	ErrConflict:            "订单状态已变化，请刷新后重试",
 	ErrInvalidCredentials:  "invalid username or password",
 	ErrTokenExpired:        "token expired",
 	ErrTokenInvalid:        "invalid token",
@@ -75,6 +75,8 @@ func Write(c *gin.Context, code int) {
 		httpStatus = 401
 	case ErrForbidden:
 		httpStatus = 403
+	case ErrConflict:
+		httpStatus = 409
 	case ErrNotFound:
 		httpStatus = 404
 	case ErrInternal:
