@@ -147,6 +147,10 @@ func (h *OrderHandler) ApproveCancel(c *gin.Context) {
 			dto.Error(c, errcode.ErrBadRequest)
 			return
 		}
+		if errors.Is(err, service.ErrRoomStatusConflict) {
+			dto.Error(c, errcode.ErrConflict)
+			return
+		}
 		dto.Error(c, errcode.ErrOrderNotFound)
 		return
 	}
