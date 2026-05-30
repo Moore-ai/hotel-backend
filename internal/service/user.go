@@ -1,10 +1,14 @@
 package service
 
 import (
+	"log"
+
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
 	"hotel-backend/pkg/hash"
+	"hotel-backend/pkg/obfuscate"
 
+	"github.com/speps/go-hashids/v2"
 	"gorm.io/gorm"
 )
 
@@ -16,10 +20,30 @@ type UserService struct {
 	waiterRepo   *repository.WaiterRepo
 	auditLog     *AuditLogService
 	db           *gorm.DB
+	obfuscateKey *hashids.HashID
 }
 
-func NewUserService(repo *repository.UserRepo, guestRepo *repository.GuestRepo, employeeRepo *repository.EmployeeRepo, adminRepo *repository.AdminRepo, waiterRepo *repository.WaiterRepo, auditLog *AuditLogService, db *gorm.DB) *UserService {
-	return &UserService{repo: repo, guestRepo: guestRepo, employeeRepo: employeeRepo, adminRepo: adminRepo, waiterRepo: waiterRepo, auditLog: auditLog, db: db}
+func NewUserService(repo *repository.UserRepo, guestRepo *repository.GuestRepo, employeeRepo *repository.EmployeeRepo, adminRepo *repository.AdminRepo, waiterRepo *repository.WaiterRepo, auditLog *AuditLogService, db *gorm.DB, obfuscateKey *hashids.HashID) *UserService {
+	return &UserService{repo: repo, guestRepo: guestRepo, employeeRepo: employeeRepo, adminRepo: adminRepo, waiterRepo: waiterRepo, auditLog: auditLog, db: db, obfuscateKey: obfuscateKey}
+}
+
+func (s *UserService) DecodeCode(code string) (uint, error) {
+	return obfuscate.Decode(s.obfuscateKey, code)
+}
+
+func (s *UserService) encodeUser(u *model.User) {
+	code, err := obfuscate.Encode(s.obfuscateKey, u.ID)
+	if err != nil {
+		log.Printf("Failed to encode user %d: %v", u.ID, err)
+		return
+	}
+	u.UserCode = code
+}
+
+func (s *UserService) encodeUsers(users []model.User) {
+	for i := range users {
+		s.encodeUser(&users[i])
+	}
 }
 
 func (s *UserService) Create(username, password, role, name, phone, email string, hireDate string, salary float64, notes string) (*model.User, error) {
@@ -99,15 +123,24 @@ func (s *UserService) Create(username, password, role, name, phone, email string
 	}
 
 	s.auditLog.Log(0, "created", "user", user.ID, nil, user, "创建用户 "+user.Username)
+	s.encodeUser(user)
 	return user, nil
 }
 
 func (s *UserService) FindByID(id uint) (*model.User, error) {
-	return s.repo.FindByID(id)
+	user, err := s.repo.FindByID(id)
+	if err == nil {
+		s.encodeUser(user)
+	}
+	return user, err
 }
 
 func (s *UserService) FindAll(page, pageSize int) ([]model.User, int64, error) {
-	return s.repo.FindAll(page, pageSize)
+	users, total, err := s.repo.FindAll(page, pageSize)
+	if err == nil {
+		s.encodeUsers(users)
+	}
+	return users, total, err
 }
 
 func (s *UserService) Update(id uint, username, password, role, name, phone, email string) (*model.User, error) {
@@ -203,6 +236,7 @@ func (s *UserService) Update(id uint, username, password, role, name, phone, ema
 	}
 
 	s.auditLog.Log(0, "updated", "user", user.ID, &oldUser, user, "修改用户 "+user.Username)
+	s.encodeUser(user)
 	return user, nil
 }
 

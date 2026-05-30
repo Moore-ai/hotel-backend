@@ -6,8 +6,8 @@ import (
 	"hotel-backend/config"
 	"hotel-backend/internal/model"
 	"hotel-backend/internal/repository"
-	"hotel-backend/pkg/jwt"
 	"hotel-backend/pkg/hash"
+	"hotel-backend/pkg/jwt"
 )
 
 type AuthService struct {
@@ -68,6 +68,7 @@ func (s *AuthService) Login(username, password string, allowedRoles ...string) (
 		return "", "", 0, nil, "", err
 	}
 
+	s.userService.encodeUser(user)
 	return accessToken, refreshToken, int64(accessExp.Seconds()), user, name, nil
 }
 

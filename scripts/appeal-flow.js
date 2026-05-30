@@ -50,7 +50,7 @@ async function main() {
   const guestLogin = await ok("POST", "/auth/login",
     { username: guestUser, password: "123456" })
   guestToken = guestLogin.access_token
-  guestID = guestLogin.user_id
+  guestID = guestLogin.user_code
 
   const todayStr = today()
   const day3 = future(3)

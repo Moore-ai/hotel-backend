@@ -98,7 +98,7 @@ func loginResponse(accessToken, refreshToken string, expiresIn int64, user *mode
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    expiresIn,
-		UserID:       user.ID,
+		UserCode:     user.UserCode,
 		Role:         user.Role,
 		Username:     user.Username,
 		Name:         name,

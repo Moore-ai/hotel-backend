@@ -26,10 +26,10 @@ type Services struct {
 func NewServices(repos *repository.Repositories, jwtCfg config.JWTConfig, hub *Hub, allocationCfg config.AllocationConfig, cancellationCfg config.CancellationConfig, appealCfg config.AppealConfig, llmCfg config.LLMConfig) *Services {
 	audit := NewAuditLogService(repos.Audit)
 	db := repos.DB()
-	user := NewUserService(repos.User, repos.Guest, repos.Employee, repos.Admin, repos.Waiter, audit, db)
+	obfKey := obfuscate.NewKey(jwtCfg.Secret)
+	user := NewUserService(repos.User, repos.Guest, repos.Employee, repos.Admin, repos.Waiter, audit, db, obfKey)
 	strategy := NewStrategyFromConfig(allocationCfg.Strategy)
 	allocator := NewRoomAllocator(repos.Room, repos.Order, strategy)
-	obfKey := obfuscate.NewKey(jwtCfg.Secret)
 	notifSvc := NewNotificationService(repos.Notif, hub, obfKey)
 	waiterSvc := NewWaiterService(repos.Waiter, notifSvc, audit, db)
 	orderSvc := NewOrderService(repos.Order, repos.Room, repos.User, allocator, audit, notifSvc, db, cancellationCfg.CutoffHours, obfKey, cancellationCfg.DefaultRejectReason, cancellationCfg.NotifyStrategy, cancellationCfg.NotifyStaffIDs)
