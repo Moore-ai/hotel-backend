@@ -50,6 +50,7 @@ async function setup() {
   const guestLogin = await api('POST', '/auth/login', null, { username: gName, password: 'test1234' });
   if (guestLogin.data.code !== 0) { log('FAIL', '住户登录失败'); failed++; return false; }
   tokens.guest = guestLogin.data.data.access_token;
+  tokens.guestCode = guestLogin.data.data.user_code;
   log('PASS', '住户注册并登录成功'); passed++;
 
   // 创建房间
@@ -125,7 +126,7 @@ async function testServiceFlow() {
 
   // 创建入住
   const checkin = await api('POST', '/checkins', tokens.admin, {
-    user_id: order.data.data.user_id,
+    user_code: tokens.guestCode,
     expected_checkout_time: new Date(Date.now() + 86400000 * 2).toISOString(),
   });
   if (checkin.data.code !== 0) { log('FAIL', `创建入住失败: ${JSON.stringify(checkin.data)}`); failed++; return; }
