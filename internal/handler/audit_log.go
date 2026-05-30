@@ -12,15 +12,22 @@ import (
 
 type AuditLogHandler struct {
 	auditLogService *service.AuditLogService
+	userService     *service.UserService
 }
 
-func NewAuditLogHandler(auditLogService *service.AuditLogService) *AuditLogHandler {
-	return &AuditLogHandler{auditLogService: auditLogService}
+func NewAuditLogHandler(auditLogService *service.AuditLogService, userService *service.UserService) *AuditLogHandler {
+	return &AuditLogHandler{auditLogService: auditLogService, userService: userService}
 }
 
 func (h *AuditLogHandler) List(c *gin.Context) {
 	entityID, _ := strconv.ParseUint(c.Query("entity_id"), 10, 64)
-	userID, _ := strconv.ParseUint(c.Query("user_id"), 10, 64)
+	userID := uint(0)
+	if code := c.Query("user_code"); code != "" {
+		id, err := h.userService.DecodeCode(code)
+		if err == nil {
+			userID = id
+		}
+	}
 	p := dto.ParsePagination(c.Query("page"), c.Query("page_size"))
 
 	f := repository.AuditLogFilter{

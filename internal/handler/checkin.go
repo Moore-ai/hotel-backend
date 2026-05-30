@@ -13,10 +13,11 @@ import (
 
 type CheckinHandler struct {
 	checkinService *service.CheckinService
+	userService    *service.UserService
 }
 
-func NewCheckinHandler(checkinService *service.CheckinService) *CheckinHandler {
-	return &CheckinHandler{checkinService: checkinService}
+func NewCheckinHandler(checkinService *service.CheckinService, userService *service.UserService) *CheckinHandler {
+	return &CheckinHandler{checkinService: checkinService, userService: userService}
 }
 
 func (h *CheckinHandler) List(c *gin.Context) {
@@ -45,12 +46,17 @@ func (h *CheckinHandler) Create(c *gin.Context) {
 		dto.Error(c, errcode.ErrBadRequest)
 		return
 	}
+	userID, err := h.userService.DecodeCode(req.UserCode)
+	if err != nil {
+		dto.Error(c, errcode.ErrBadRequest)
+		return
+	}
 	expectedTime, err := time.Parse(time.RFC3339, req.ExpectedCheckoutTime)
 	if err != nil {
 		dto.Error(c, errcode.ErrBadRequest)
 		return
 	}
-	checkin, err := h.checkinService.Create(req.OrderID, req.UserID, req.RoomID, expectedTime)
+	checkin, err := h.checkinService.Create(req.OrderID, userID, req.RoomID, expectedTime)
 	if err != nil {
 		if errors.Is(err, service.ErrNoRoomAvailable) {
 			dto.Error(c, errcode.ErrNoRoomAvailable)

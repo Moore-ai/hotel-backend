@@ -161,7 +161,7 @@ type ServiceRequest struct {
 
 type CreateCheckinRequest struct {
 	OrderID              *uint  `json:"order_id"`
-	UserID               uint   `json:"user_id" binding:"required"`
+	UserCode             string `json:"user_code" binding:"required"`
 	RoomID               uint   `json:"room_id"`
 	ExpectedCheckoutTime string `json:"expected_checkout_time" binding:"required"`
 }
